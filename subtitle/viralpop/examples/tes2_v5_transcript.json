@@ -1,0 +1,483 @@
+{
+  "source": "C:\\Users\\Administrator\\Desktop\\animated subtitle renderer\\output\\tes2_transcript_v2.json",
+  "alignment_level": "MICRO-PHRASE",
+  "alignment_method": "Whisper per-character token timestamps aligned to corrected spoken text by monotonic dynamic programming; width-aware phrase splitting added on top so no cue overflows the frame; no weighted distribution, VAD, silence or energy timing",
+  "segments": [
+    {
+      "id": 0,
+      "start": 0.0,
+      "end": 3.66,
+      "source_asr_text": "ไอพัดยิ่งทำง่ายเลย สำรองข้อมูลไปลงแฟตไดยในเวลาไม่ถึงนาที",
+      "corrected_text": "ไอแพดยิ่งทำง่ายเลยสำรองข้อมูลลงแฟลชไดรฟ์ในเวลาไม่ถึงหนึ่งนาที",
+      "alignment_method": "whisper-character-token-timing + monotonic DP text alignment (width-aware phrase split)",
+      "alignment_level": "MICRO-PHRASE",
+      "cues": [
+        {
+          "text": "ไอแพดยิ่ง",
+          "word_count": 2,
+          "start": 0.0,
+          "end": 0.58,
+          "source_char_start": 0,
+          "source_char_end": 9,
+          "text_match_ratio": 0.8889
+        },
+        {
+          "text": "ทำง่ายเลย",
+          "word_count": 2,
+          "start": 0.58,
+          "end": 1.22,
+          "source_char_start": 9,
+          "source_char_end": 18,
+          "text_match_ratio": 1.0
+        },
+        {
+          "text": "สำรองข้อมูล",
+          "word_count": 2,
+          "start": 1.28,
+          "end": 1.94,
+          "source_char_start": 18,
+          "source_char_end": 29,
+          "text_match_ratio": 1.0
+        },
+        {
+          "text": "ลงแฟลชไดรฟ์",
+          "word_count": 2,
+          "start": 2.06,
+          "end": 2.54,
+          "source_char_start": 31,
+          "source_char_end": 38,
+          "text_match_ratio": 0.6558
+        },
+        {
+          "text": "ในเวลาไม่",
+          "word_count": 2,
+          "start": 2.64,
+          "end": 3.18,
+          "source_char_start": 39,
+          "source_char_end": 48,
+          "text_match_ratio": 1.0
+        },
+        {
+          "text": "ถึงหนึ่งนาที",
+          "word_count": 3,
+          "start": 3.18,
+          "end": 3.66,
+          "source_char_start": 48,
+          "source_char_end": 55,
+          "text_match_ratio": 0.7243
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "start": 3.66,
+      "end": 4.96,
+      "source_asr_text": "คนไม่เก่งคอมก็ทำได้",
+      "corrected_text": "คนไม่เก่งคอมก็ทำได้",
+      "alignment_method": "whisper-character-token-timing + monotonic DP text alignment (width-aware phrase split)",
+      "alignment_level": "MICRO-PHRASE",
+      "cues": [
+        {
+          "text": "คนไม่เก่งคอมก็ทำได้",
+          "word_count": 5,
+          "start": 3.66,
+          "end": 4.96,
+          "source_char_start": 0,
+          "source_char_end": 19,
+          "text_match_ratio": 1.0
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "start": 4.96,
+      "end": 7.62,
+      "source_asr_text": "เสียทั้งคู่เข้ากับไอพัดนะ จากนั้นก็เข้าไปที่แอปไฟล์",
+      "corrected_text": "เสียบทั้งคู่เข้ากับไอแพดนะจากนั้นก็เข้าไปที่แอปไฟล์",
+      "alignment_method": "whisper-character-token-timing + monotonic DP text alignment (width-aware phrase split)",
+      "alignment_level": "MICRO-PHRASE",
+      "cues": [
+        {
+          "text": "เสียบทั้งคู่",
+          "word_count": 2,
+          "start": 4.96,
+          "end": 5.48,
+          "source_char_start": 0,
+          "source_char_end": 11,
+          "text_match_ratio": 0.954
+        },
+        {
+          "text": "เข้ากับไอแพดนะ",
+          "word_count": 3,
+          "start": 5.48,
+          "end": 6.4,
+          "source_char_start": 11,
+          "source_char_end": 25,
+          "text_match_ratio": 0.9286
+        },
+        {
+          "text": "จากนั้นก็เข้าไป",
+          "word_count": 3,
+          "start": 6.46,
+          "end": 7.16,
+          "source_char_start": 25,
+          "source_char_end": 40,
+          "text_match_ratio": 1.0
+        },
+        {
+          "text": "ที่แอปไฟล์",
+          "word_count": 2,
+          "start": 7.16,
+          "end": 7.62,
+          "source_char_start": 40,
+          "source_char_end": 50,
+          "text_match_ratio": 1.0
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "start": 7.62,
+      "end": 8.68,
+      "source_asr_text": "ในเครื่องมีอยู่แล้ว",
+      "corrected_text": "ในเครื่องมีอยู่แล้ว",
+      "alignment_method": "whisper-character-token-timing + monotonic DP text alignment (width-aware phrase split)",
+      "alignment_level": "MICRO-PHRASE",
+      "cues": [
+        {
+          "text": "ในเครื่องมีอยู่แล้ว",
+          "word_count": 5,
+          "start": 7.62,
+          "end": 8.68,
+          "source_char_start": 0,
+          "source_char_end": 19,
+          "text_match_ratio": 1.0
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "start": 8.68,
+      "end": 10.14,
+      "source_asr_text": "รอแปปนึง ได้ใหม่จะโชว์ขึ้นมา",
+      "corrected_text": "รอแป๊บนึงเดี๋ยวไฟล์ใหม่จะโชว์ขึ้นมา",
+      "alignment_method": "whisper-character-token-timing + monotonic DP text alignment (width-aware phrase split)",
+      "alignment_level": "MICRO-PHRASE",
+      "cues": [
+        {
+          "text": "รอแป๊บนึงเดี๋ยว",
+          "word_count": 2,
+          "start": 8.68,
+          "end": 9.26,
+          "source_char_start": 0,
+          "source_char_end": 10,
+          "text_match_ratio": 0.63
+        },
+        {
+          "text": "ไฟล์ใหม่จะโชว์ขึ้นมา",
+          "word_count": 3,
+          "start": 9.38,
+          "end": 10.14,
+          "source_char_start": 11,
+          "source_char_end": 27,
+          "text_match_ratio": 0.8829
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "start": 10.14,
+      "end": 12.76,
+      "source_asr_text": "ตอนนี้ยังไม่มีข้อมูลอะไรนะ เราสลับมาที่แอปอล่าเบา",
+      "corrected_text": "ตอนนี้ยังไม่มีข้อมูลอะไรนะเราสลับมาที่แอปรูปภาพ",
+      "alignment_method": "whisper-character-token-timing + monotonic DP text alignment (width-aware phrase split)",
+      "alignment_level": "MICRO-PHRASE",
+      "cues": [
+        {
+          "text": "ตอนนี้ยังไม่มี",
+          "word_count": 3,
+          "start": 10.14,
+          "end": 10.84,
+          "source_char_start": 0,
+          "source_char_end": 14,
+          "text_match_ratio": 1.0
+        },
+        {
+          "text": "ข้อมูลอะไรนะ",
+          "word_count": 2,
+          "start": 10.84,
+          "end": 11.68,
+          "source_char_start": 14,
+          "source_char_end": 26,
+          "text_match_ratio": 1.0
+        },
+        {
+          "text": "เราสลับมาที่",
+          "word_count": 3,
+          "start": 11.76,
+          "end": 12.36,
+          "source_char_start": 26,
+          "source_char_end": 38,
+          "text_match_ratio": 1.0
+        },
+        {
+          "text": "แอปรูปภาพ",
+          "word_count": 2,
+          "start": 12.36,
+          "end": 12.74,
+          "source_char_start": 38,
+          "source_char_end": 45,
+          "text_match_ratio": 0.4933
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "start": 12.76,
+      "end": 14.62,
+      "source_asr_text": "แล้วก็เลือกรูปที่เราต้องการในนี้ได้เลย",
+      "corrected_text": "แล้วก็เลือกรูปที่เราต้องการในนี้ได้เลย",
+      "alignment_method": "whisper-character-token-timing + monotonic DP text alignment (width-aware phrase split)",
+      "alignment_level": "MICRO-PHRASE",
+      "cues": [
+        {
+          "text": "แล้วก็เลือกรูปที่เรา",
+          "word_count": 3,
+          "start": 12.76,
+          "end": 13.58,
+          "source_char_start": 0,
+          "source_char_end": 20,
+          "text_match_ratio": 1.0
+        },
+        {
+          "text": "ต้องการในนี้ได้เลย",
+          "word_count": 2,
+          "start": 13.58,
+          "end": 14.62,
+          "source_char_start": 20,
+          "source_char_end": 38,
+          "text_match_ratio": 1.0
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "start": 14.62,
+      "end": 16.74,
+      "source_asr_text": "ผมเลือกเป็นตัวอย่าง จากนั้นกดปุ่มแชร์",
+      "corrected_text": "ผมเลือกเป็นตัวอย่างจากนั้นกดปุ่มแชร์",
+      "alignment_method": "whisper-character-token-timing + monotonic DP text alignment (width-aware phrase split)",
+      "alignment_level": "MICRO-PHRASE",
+      "cues": [
+        {
+          "text": "ผมเลือกเป็น",
+          "word_count": 2,
+          "start": 14.62,
+          "end": 15.24,
+          "source_char_start": 0,
+          "source_char_end": 11,
+          "text_match_ratio": 1.0
+        },
+        {
+          "text": "ตัวอย่าง",
+          "word_count": 1,
+          "start": 15.24,
+          "end": 15.62,
+          "source_char_start": 11,
+          "source_char_end": 19,
+          "text_match_ratio": 1.0
+        },
+        {
+          "text": "จากนั้นกดปุ่มแชร์",
+          "word_count": 2,
+          "start": 15.78,
+          "end": 16.74,
+          "source_char_start": 19,
+          "source_char_end": 36,
+          "text_match_ratio": 1.0
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "start": 16.74,
+      "end": 18.22,
+      "source_asr_text": "แล้วเลือกคำว่าบันทึกไปอย่างแอฟไฟ",
+      "corrected_text": "แล้วเลือกคำว่าบันทึกไปยังแอปไฟล์",
+      "alignment_method": "whisper-character-token-timing + monotonic DP text alignment (width-aware phrase split)",
+      "alignment_level": "MICRO-PHRASE",
+      "cues": [
+        {
+          "text": "แล้วเลือกคำว่า",
+          "word_count": 2,
+          "start": 16.74,
+          "end": 17.48,
+          "source_char_start": 0,
+          "source_char_end": 14,
+          "text_match_ratio": 1.0
+        },
+        {
+          "text": "บันทึกไปยังแอปไฟล์",
+          "word_count": 3,
+          "start": 17.48,
+          "end": 18.22,
+          "source_char_start": 14,
+          "source_char_end": 32,
+          "text_match_ratio": 0.7778
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "start": 18.22,
+      "end": 20.78,
+      "source_asr_text": "เลือกตัวแฟดายเป็นไปทาง แล้วก็กดบันทึกลงไปได้เลย",
+      "corrected_text": "เลือกตัวแฟลชไดรฟ์เป็นปลายทางแล้วก็กดบันทึกลงไปได้เลย",
+      "alignment_method": "whisper-character-token-timing + monotonic DP text alignment (width-aware phrase split)",
+      "alignment_level": "MICRO-PHRASE",
+      "cues": [
+        {
+          "text": "เลือกตัวแฟลชไดรฟ์",
+          "word_count": 3,
+          "start": 18.22,
+          "end": 18.92,
+          "source_char_start": 0,
+          "source_char_end": 11,
+          "text_match_ratio": 0.7751
+        },
+        {
+          "text": "เป็นปลายทาง",
+          "word_count": 2,
+          "start": 19.02,
+          "end": 19.72,
+          "source_char_start": 13,
+          "source_char_end": 22,
+          "text_match_ratio": 0.7945
+        },
+        {
+          "text": "แล้วก็กดบันทึก",
+          "word_count": 3,
+          "start": 19.84,
+          "end": 20.48,
+          "source_char_start": 22,
+          "source_char_end": 36,
+          "text_match_ratio": 1.0
+        },
+        {
+          "text": "ลงไปได้เลย",
+          "word_count": 2,
+          "start": 20.48,
+          "end": 20.78,
+          "source_char_start": 36,
+          "source_char_end": 46,
+          "text_match_ratio": 1.0
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "start": 20.78,
+      "end": 23.16,
+      "source_asr_text": "เป็นอันเสียเรียบร้อยนะ อันนี้คือลูกไปอยู่ในแฟดาย",
+      "corrected_text": "เป็นอันเสร็จเรียบร้อยนะอันนี้คือข้อมูลอยู่ในแฟลชไดรฟ์",
+      "alignment_method": "whisper-character-token-timing + monotonic DP text alignment (width-aware phrase split)",
+      "alignment_level": "MICRO-PHRASE",
+      "cues": [
+        {
+          "text": "เป็นอันเสร็จ",
+          "word_count": 3,
+          "start": 20.78,
+          "end": 21.14,
+          "source_char_start": 0,
+          "source_char_end": 9,
+          "text_match_ratio": 0.8496
+        },
+        {
+          "text": "เรียบร้อยนะ",
+          "word_count": 2,
+          "start": 21.2,
+          "end": 21.8,
+          "source_char_start": 11,
+          "source_char_end": 22,
+          "text_match_ratio": 1.0
+        },
+        {
+          "text": "อันนี้คือข้อมูลอยู่",
+          "word_count": 3,
+          "start": 21.8,
+          "end": 22.62,
+          "source_char_start": 22,
+          "source_char_end": 40,
+          "text_match_ratio": 0.7552
+        },
+        {
+          "text": "ในแฟลชไดรฟ์",
+          "word_count": 2,
+          "start": 22.62,
+          "end": 23.04,
+          "source_char_start": 40,
+          "source_char_end": 45,
+          "text_match_ratio": 0.6086
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "start": 23.16,
+      "end": 24.12,
+      "source_asr_text": "แล้วลองไปเช็คดูได้",
+      "corrected_text": "แล้วลองไปเช็กดูได้",
+      "alignment_method": "whisper-character-token-timing + monotonic DP text alignment (width-aware phrase split)",
+      "alignment_level": "MICRO-PHRASE",
+      "cues": [
+        {
+          "text": "แล้วลองไปเช็กดูได้",
+          "word_count": 5,
+          "start": 23.16,
+          "end": 24.12,
+          "source_char_start": 0,
+          "source_char_end": 18,
+          "text_match_ratio": 0.9444
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "start": 24.12,
+      "end": 27.04,
+      "source_asr_text": "มือถือหรือไอพัทคายความจำเต็ม ตัวนี้ช่วยได้ครับ",
+      "corrected_text": "มือถือหรือไอแพดใครความจำเต็มตัวนี้ช่วยได้ครับ",
+      "alignment_method": "whisper-character-token-timing + monotonic DP text alignment (width-aware phrase split)",
+      "alignment_level": "MICRO-PHRASE",
+      "cues": [
+        {
+          "text": "มือถือหรือไอแพด",
+          "word_count": 3,
+          "start": 24.12,
+          "end": 24.82,
+          "source_char_start": 0,
+          "source_char_end": 13,
+          "text_match_ratio": 0.9246
+        },
+        {
+          "text": "ใครความจำเต็ม",
+          "word_count": 2,
+          "start": 25.18,
+          "end": 25.9,
+          "source_char_start": 18,
+          "source_char_end": 28,
+          "text_match_ratio": 0.8626
+        },
+        {
+          "text": "ตัวนี้ช่วยได้ครับ",
+          "word_count": 4,
+          "start": 25.98,
+          "end": 27.04,
+          "source_char_start": 28,
+          "source_char_end": 45,
+          "text_match_ratio": 1.0
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,527 @@
+{
+  "_note": "Static skill data. canonical = spelling shown on screen. variants = ASR spellings mapped to canonical (longest match first). syllables = true spoken count, overrides pythainlp dict engine where it is wrong (null = trust dict engine). protect = never cut inside this term when splitting lines/cues.",
+  "loanwords": [
+    {
+      "canonical": "เมทัล",
+      "syllables": 2,
+      "protect": true,
+      "variants": [
+        "เมทัล",
+        "เมทาล",
+        "เมธาน",
+        "เมทัน",
+        "Methan",
+        "methan",
+        "Metal",
+        "metal",
+        "METAL"
+      ]
+    },
+    {
+      "canonical": "สแตนเลส",
+      "syllables": 3,
+      "protect": true,
+      "variants": [
+        "สแตนเลส",
+        "สแตร์เล็ด",
+        "สเตนเลส",
+        "สแตนเลท",
+        "สแตนเรท"
+      ]
+    },
+    {
+      "canonical": "กล่อง",
+      "syllables": 1,
+      "protect": true,
+      "variants": [
+        "กล่อง"
+      ]
+    },
+    {
+      "canonical": "โฮลเดอร์",
+      "syllables": 2,
+      "protect": true,
+      "variants": [
+        "โฮลเดอร์",
+        "โฮลเด้อ",
+        "โฮลเดอร",
+        "Holder",
+        "holder",
+        "HOLDER"
+      ]
+    },
+    {
+      "canonical": "การ์ด",
+      "syllables": 1,
+      "protect": true,
+      "variants": [
+        "การ์ด",
+        "กาด",
+        "ก๊าด",
+        "Guard",
+        "guard",
+        "Card",
+        "card",
+        "CARD"
+      ]
+    },
+    {
+      "canonical": "ตะกร้า",
+      "syllables": 2,
+      "protect": true,
+      "variants": [
+        "ตะกร้า",
+        "ตะก้า",
+        "ตระกร้า",
+        "ดักก้า",
+        "ต่ะก้า"
+      ]
+    },
+    {
+      "canonical": "แมทช์",
+      "syllables": 1,
+      "protect": true,
+      "variants": [
+        "แมทช์",
+        "แมท",
+        "แม็ด",
+        "แบด",
+        "match",
+        "Match",
+        "MATCH"
+      ]
+    },
+    {
+      "canonical": "กิมมิค",
+      "syllables": 2,
+      "protect": true,
+      "variants": [
+        "กิมมิค",
+        "กิมมิก",
+        "กิมมิ"
+      ]
+    },
+    {
+      "canonical": "ชิล",
+      "syllables": 1,
+      "protect": true,
+      "variants": [
+        "ชิล",
+        "ชีว",
+        "ชิว",
+        "chill",
+        "Chill"
+      ]
+    },
+    {
+      "canonical": "สตรีท",
+      "syllables": 2,
+      "protect": true,
+      "variants": [
+        "สตรีท",
+        "สตี",
+        "street",
+        "Street",
+        "STREET"
+      ]
+    },
+    {
+      "canonical": "ตาราง",
+      "syllables": 2,
+      "protect": true,
+      "variants": [
+        "ตาราง",
+        "ตารัง"
+      ]
+    },
+    {
+      "canonical": "แอคคอร์เดียน",
+      "variants": [
+        "Accordiean",
+        "Accordeon",
+        "Accordion",
+        "accordeon",
+        "accordion",
+        "แอคคอร์เดียน"
+      ],
+      "syllables": 5,
+      "protect": true
+    },
+    {
+      "canonical": "4-in-1",
+      "syllables": 3,
+      "protect": true,
+      "variants": [
+        "4in1",
+        "for in one",
+        "ฟออินวัน",
+        "four in one",
+        "โฟร์อินวัน",
+        "ฟอร์อินวัน",
+        "4-in-1"
+      ]
+    },
+    {
+      "canonical": "3 in 1",
+      "syllables": 3,
+      "protect": true,
+      "variants": [
+        "ทีอินวัน",
+        "3in1",
+        "t in one",
+        "ทรีอินวัน",
+        "3-in-1",
+        "cn one",
+        "ซีอินวัน",
+        "3 in 1",
+        "T in one",
+        "ที in one"
+      ]
+    },
+    {
+      "canonical": "Lightning",
+      "syllables": 2,
+      "protect": true,
+      "variants": [
+        "ลายนิ่ง",
+        "ไลนิง",
+        "ไลนิ่ง",
+        "lightning",
+        "ไลท์นิ่ง",
+        "Lightning",
+        "ไลท์นิง"
+      ]
+    },
+    {
+      "canonical": "Type-C",
+      "syllables": 2,
+      "protect": true,
+      "variants": [
+        "ไทพ์ซี",
+        "ไทป์ซี",
+        "Type-C",
+        "ไทซี",
+        "type-c",
+        "Type C"
+      ]
+    },
+    {
+      "canonical": "Micro USB",
+      "syllables": 4,
+      "protect": true,
+      "variants": [
+        "Micro USB",
+        "ไมโคร",
+        "ไมโครยูเอสบี",
+        "micro usb",
+        "ไมโคร ยูเอสบี",
+        "MicroUSB"
+      ]
+    },
+    {
+      "canonical": "Micro",
+      "syllables": 2,
+      "protect": true,
+      "variants": [
+        "micro",
+        "ไมโคร",
+        "Micro"
+      ]
+    },
+    {
+      "canonical": "65W",
+      "syllables": 3,
+      "protect": true,
+      "variants": [
+        "65W",
+        "65 W",
+        "หกสิบห้าวัน",
+        "65w",
+        "หกสิบห้าวัตต์",
+        "65 วัตต์"
+      ]
+    },
+    {
+      "canonical": "65W PD",
+      "syllables": 4,
+      "protect": true,
+      "variants": [
+        "65 W PD",
+        "หกสิบห้าวัตต์พีดี",
+        "65W PD",
+        "หกสิบห้าวันพีดี"
+      ]
+    },
+    {
+      "canonical": "100W",
+      "syllables": 3,
+      "protect": true,
+      "variants": [
+        "100W",
+        "หนึ่งร้อยบาท",
+        "หนึ่งร้อยวัตต์",
+        "100w",
+        "หนึ่งร้อยวัน",
+        "100 W"
+      ]
+    },
+    {
+      "canonical": "PD",
+      "syllables": 2,
+      "protect": true,
+      "variants": [
+        "PD",
+        "พีดี"
+      ]
+    },
+    {
+      "canonical": "480 เมกะบิต",
+      "syllables": 5,
+      "protect": true,
+      "variants": [
+        "480 เมกะบิต",
+        "สี่ร้อยแปดสิบเมกะบิต",
+        "480Mbps"
+      ]
+    },
+    {
+      "canonical": "1.5 เมตร",
+      "syllables": 3,
+      "protect": true,
+      "variants": [
+        "1.5 เมตร",
+        "หนึ่งจุดห้าเมตร"
+      ]
+    },
+    {
+      "canonical": "1.2 เมตร",
+      "syllables": 3,
+      "protect": true,
+      "variants": [
+        "หนึ่งจุดสองเมตร",
+        "1.2 เมตร"
+      ]
+    },
+    {
+      "canonical": "โน้ตบุ๊ก",
+      "syllables": 3,
+      "protect": true,
+      "variants": [
+        "โน้ตบุ๊ค",
+        "โน้ตบุ๊ก",
+        "โน๊ตบุ๊ก",
+        "notebook",
+        "Notebook",
+        "NOTEBOOK"
+      ]
+    },
+    {
+      "canonical": "เคเบิล",
+      "syllables": 2,
+      "protect": true,
+      "variants": [
+        "เคเบิล",
+        "เคเบิ้ล"
+      ]
+    },
+    {
+      "canonical": "สปริง",
+      "syllables": 2,
+      "protect": true,
+      "variants": [
+        "สปิง",
+        "สปริง"
+      ]
+    }
+  ],
+  "corrections": [
+    {
+      "canonical": "แพง",
+      "variants": [
+        "แพ้ง"
+      ]
+    },
+    {
+      "canonical": "กล่องเก็บ",
+      "variants": [
+        "กองเก็บ"
+      ]
+    },
+    {
+      "canonical": "กระเป๋า",
+      "variants": [
+        "กระเป่า",
+        "กะเปล่า",
+        "กระเปอด"
+      ]
+    },
+    {
+      "canonical": "สะพาย",
+      "variants": [
+        "สภาย",
+        "สะภาย"
+      ]
+    },
+    {
+      "canonical": "จะวัน",
+      "variants": [
+        "จ้าวัน"
+      ]
+    },
+    {
+      "canonical": "รีบๆ",
+      "variants": [
+        "รีฟๆ"
+      ]
+    },
+    {
+      "canonical": "วันไหน",
+      "variants": [
+        "วันนาไหน"
+      ]
+    },
+    {
+      "canonical": "ตอบโจทย์",
+      "variants": [
+        "ตอบจด"
+      ]
+    },
+    {
+      "canonical": "ช่วง",
+      "variants": [
+        "เช่วง"
+      ]
+    },
+    {
+      "canonical": "เลย",
+      "variants": [
+        "เร้อย"
+      ]
+    },
+    {
+      "canonical": "จาก",
+      "variants": [
+        "จажд"
+      ]
+    },
+    {
+      "canonical": "รอดอยู่",
+      "variants": [
+        "ลอดอยู่"
+      ]
+    },
+    {
+      "canonical": "เกะกะ",
+      "variants": [
+        "เกกอะ"
+      ]
+    },
+    {
+      "canonical": "ข้างนอก",
+      "variants": [
+        "ควางนอก"
+      ]
+    },
+    {
+      "canonical": "เสื้อผ้า",
+      "variants": [
+        "เสื้อพา"
+      ]
+    },
+    {
+      "canonical": "ได้ครบ",
+      "variants": [
+        "ด้วยครบ"
+      ]
+    },
+    {
+      "canonical": "ลุคไหน",
+      "variants": [
+        "ลูกไหน"
+      ]
+    },
+    {
+      "canonical": "เป็น",
+      "variants": [
+        "เป้น"
+      ]
+    },
+    {
+      "canonical": "แถม",
+      "variants": [
+        "แห่ม"
+      ]
+    },
+    {
+      "canonical": "พิกัด",
+      "variants": [
+        "พิกัน"
+      ]
+    },
+    {
+      "canonical": "ทุกลุค",
+      "variants": [
+        "ทุกลูก"
+      ]
+    },
+    {
+      "canonical": "คล่องตัว",
+      "variants": [
+        "พร่องตัว"
+      ]
+    },
+    {
+      "canonical": "เก๋",
+      "variants": [
+        "เกะ"
+      ]
+    },
+    {
+      "canonical": "ยิ่ง",
+      "variants": [
+        "hoy"
+      ]
+    },
+    {
+      "canonical": "ตะกร้าสิ",
+      "variants": [
+        "ตะก้าสี่"
+      ]
+    },
+    {
+      "canonical": "โจรกรรม",
+      "variants": [
+        "จรกรรม"
+      ]
+    },
+    {
+      "canonical": "ตะกร้า",
+      "variants": [
+        "สก้า",
+        "ทะก้า",
+        "ตระกร้า",
+        "ตะก้า"
+      ]
+    },
+    {
+      "canonical": "ไวสุดๆ",
+      "variants": [
+        "ไว้สุดๆ",
+        "ไวสุด"
+      ]
+    }
+  ],
+  "contextual_corrections": [
+    {
+      "pattern": "วันนี้เราบอกเลยว่าตอบโจทย์",
+      "replacement": "ใบนี้เราบอกเลยว่าตอบโจทย์",
+      "provenance": "owner listening 2026-09-17 confirms audio says 'ใบนี้' at cut1 2.04-3.16 (seg0) and 11.74-12.82 (seg4); ASR asr_test/cut1_words.json shows homophone misrecognition ว/ั/นน/ี้ at 2.04-2.54 and 11.74-12.18 in context 'เราบอกเลยว่าตอบโจทย์'",
+      "why_not_global": "'วันนี้' is correct Thai elsewhere (time reference, e.g. 'ทุกวัน', standalone date); only this 'เราบอกเลยว่าตอบโจทย์' sentence context is owner-verified as 'ใบนี้' (demonstrative for the bag)",
+      "applies_to": [
+        "cut1 seg0 2.04-3.16",
+        "cut1 seg4 11.74-12.82"
+      ]
+    }
+  ],
+  "syllable_overrides": []
+}

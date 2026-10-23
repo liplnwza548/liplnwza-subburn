@@ -1,0 +1,7 @@
+# Pinned runtime deps for animated-subtitle-renderer-v2.
+# Install with:  pip install -r requirements.txt   (or run setup.ps1)
+uharfbuzz>=0.56
+fontTools>=4.60
+pythainlp>=5.0
+groq>=1.0
+python-dotenv>=1.0

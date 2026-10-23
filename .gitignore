@@ -1,0 +1,26 @@
+# Python caches
+__pycache__/
+*.pyc
+
+# Secrets — never commit (use Colab Secrets for GROQ_API_KEY)
+.env
+
+# Work / output media — jobs run on copies in Colab, deliverables are new files
+*.mp4
+*.mov
+*.mkv
+*.m4v
+*.webm
+*.wav
+*.mp3
+
+# Per-job STT dumps and burn sidecars (example/fixture JSONs under
+# subtitle/viralpop/examples/ and subtitle/viralpop/tests/ are intentional
+# and are NOT matched by these patterns)
+*_stt.json
+*.chips.json
+subburn_work/
+qa_*/
+qc_frames/
+
+.DS_Store
