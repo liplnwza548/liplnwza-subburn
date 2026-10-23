@@ -110,15 +110,10 @@ def build_chips(script_text, stt):
                 ti = s_tok[i1 + k]
                 if tok_start[ti] is None: tok_start[ti] = t_start[j1 + k]
                 tok_end[ti] = t_end[j1 + k]
-    # fill missing by interpolation
-    known = [i for i in range(len(tokens)) if tok_start[i] is not None]
-    if not known: raise ValueError('alignment failed: no matched tokens')
-    for i in range(len(tokens)):
-        if tok_start[i] is None:
-            prev = max([k for k in known if k < i], default=None)
-            nxt = min([k for k in known if k > i], default=None)
-            base = tok_end[prev] if prev is not None else tok_start[nxt]
-            tok_start[i] = base; tok_end[i] = base + 0.15
+    missing = [(i, tok) for i, tok in enumerate(tokens) if tok_start[i] is None]
+    if missing:
+        details = ', '.join(f'index {i} (token #{i + 1}): {tok!r}' for i, tok in missing)
+        raise ValueError(f'alignment failed: unmatched script tokens: {details}')
     chips = []
     for i, tok in enumerate(tokens):
         s, e = float(tok_start[i]), float(max(tok_end[i], tok_start[i] + 0.12))
