@@ -9,7 +9,7 @@ Usage:
   chip_burn.py --video IN.mov --script NN.txt --stt NN.json --out OUT.mp4
 Inputs:
   --script : AGY-corrected script, one phrase per line (source of truth for text)
-  --stt    : Groq STT json with word-level timings (source of truth for timing)
+  --stt    : JSON with word-level timings (MFA-aligned; source of truth for timing)
 Output chips json is written next to --out as <out>.chips.json
 """
 import argparse, bisect, difflib, json, math, random, subprocess, sys
@@ -87,6 +87,16 @@ def build_chips(script_text, stt):
         line = line.strip()
         if line:
             tokens.extend(t for t in word_tokenize(line, engine='newmm', keep_whitespace=False) if t.strip())
+    # FIX 2026-10-26 (plan PLAN-chip-merge-fix.md): attach a bare repetition mark
+    # to the preceding token BEFORE alignment, so "สุดๆ" is one token and "ๆ"
+    # can never survive as its own chip for the next word to glue onto.
+    fixed = []
+    for t in tokens:
+        if t == 'ๆ' and fixed:
+            fixed[-1] += t
+        else:
+            fixed.append(t)
+    tokens = fixed
     stt_words = [w for w in stt.get('words', []) if w['word'].strip()]
     # char streams
     s_chars, s_tok = [], []           # script chars + token index per char
@@ -117,20 +127,42 @@ def build_chips(script_text, stt):
     chips = []
     for i, tok in enumerate(tokens):
         s, e = float(tok_start[i]), float(max(tok_end[i], tok_start[i] + 0.12))
-        if chips and s - chips[-1]['start'] < 0.06:      # artifact sliver: merge back
+        # FIX 2026-10-26: the artifact rule must also apply only to
+        # single-character fragments. Unrestricted, it fused whole words
+        # whose interpolated starts collided ("สุดๆ"+"ช่อง" -> "สุดๆช่อง",
+        # "ใบ"+"อื่น" -> "ใบอื่น") on character-level STT.
+        if chips and len(tok) == 1 and s - chips[-1]['start'] < 0.06:      # artifact sliver: merge back
             chips[-1]['word'] += tok; chips[-1]['end'] = max(chips[-1]['end'], e); continue
         chips.append({'word': tok, 'start': round(s, 3), 'end': round(e, 3)})
     for i in range(len(chips) - 1):
         chips[i]['end'] = min(chips[i]['end'], chips[i + 1]['start'])
         if chips[i]['end'] <= chips[i]['start']: chips[i]['end'] = chips[i]['start'] + 0.1
-    # merge sliver chips (<0.15s) into previous chip (e.g. tokenized slang fragments)
+    # FIX 2026-10-26 (revised after regression test): merge a short chip
+    # (<0.15s) back ONLY when it is a single-character fragment of the
+    # previous word (tokenizer split, e.g. "เนี๊ย"+"บ"). A multi-character
+    # short chip is a real word spoken fast (e.g. "ซิบ", "ช่อง") — keep it
+    # as its own chip, stretching its display to 0.15s out of the following
+    # gap without moving any other chip. The earlier "previous chip also
+    # short" clause is REMOVED: it chained fragments into the next word
+    # ("บ"+"ซิบ" -> "บซิบ", "สุดๆ"+"ช่อง" -> "สุดๆช่อง").
     merged = []
-    for c in chips:
-        if merged and c['end'] - c['start'] < 0.15:
+    for ci, c in enumerate(chips):
+        if merged and c['end'] - c['start'] < 0.15 and len(c['word']) == 1:
             merged[-1]['word'] += c['word']; merged[-1]['end'] = max(merged[-1]['end'], c['end'])
         else:
+            if merged and c['end'] - c['start'] < 0.15 and ci + 1 < len(chips):
+                c['end'] = min(c['start'] + 0.15, chips[ci + 1]['start'])
+                if c['end'] <= c['start']:
+                    c['end'] = c['start'] + 0.1
             merged.append(c)
-    return merged
+    # a chip must not end with the negation ไม่ (incomplete phrase) — pull next chip in
+    out = []
+    for c in merged:
+        if out and out[-1]['word'].endswith('ไม่'):
+            out[-1]['word'] += c['word']; out[-1]['end'] = max(out[-1]['end'], c['end'])
+        else:
+            out.append(c)
+    return out
 
 # ---------- rendering ----------
 class ChipRenderer:
