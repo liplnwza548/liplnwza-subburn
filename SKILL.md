@@ -38,11 +38,17 @@
 ## เริ่มงานบน Colab — ชุดไฟล์ต้องวางให้ถูก path
 
 โน้ตบุ๊กอ้างตัวเบิร์นจากชุดที่ `/content/motion-kit-portable` เสมอ (`KIT = Path("/content/motion-kit-portable")`)
-วิธีที่ง่ายที่สุดคือ clone repo นี้ไปไว้ตรงนั้น:
+วิธีที่ง่ายที่สุดคือ clone repo นี้ไปไว้ตรงนั้น — แต่ repo นี้เป็นแบบส่วนตัว (private) คำสั่ง clone ธรรมดาจะค้างรอการล็อกอินบนเครื่องใหม่ ห้ามรันคำสั่ง clone แบบไม่มีวิธีล็อกอินเด็ดขาด ให้เลือกวิธีใดวิธีหนึ่งก่อน:
+
+**วิธีที่ 1 — โหลด ZIP (แนะนำ ไม่ต้องสร้างรหัสผ่าน):** เปิดหน้า repo ในเบราว์เซอร์ → ปุ่ม Code → Download ZIP → อัปโหลดไฟล์ zip ขึ้น Colab แล้วแตกไฟล์ให้ได้โฟลเดอร์ `/content/motion-kit-portable`
+
+**วิธีที่ 2 — ใช้โทเค็นส่วนตัว (PAT):** สร้าง fine-grained personal access token ที่มีสิทธิ์อ่าน repo นี้เท่านั้น (Contents: Read-only) แล้วรันคำสั่งนี้โดยแปะโทเค็นของตัวเองแทนที่ `<TOKEN>` ในเซลล์ตอนรันเท่านั้น:
 
 ```python
-!git clone https://github.com/liplnwza548/liplnwza-subburn /content/motion-kit-portable
+!git clone https://<TOKEN>@github.com/liplnwza548/liplnwza-subburn /content/motion-kit-portable
 ```
+
+⚠️ ห้ามบันทึกโทเค็นลงในโน้ตบุ๊ก/ไฟล์งาน/แชตเด็ดขาด — แปะตอนรันเท่านั้น ใช้เสร็จแล้วเพิกถอนโทเค็นทิ้ง ถ้า clone แล้วค้างเกิน 1 นาทีให้หยุดเซลล์ ตรวจวิธีล็อกอินก่อน อย่าปล่อยให้ค้าง
 
 แล้ว path ข้างในจะตรงกับที่โน้ตบุ๊กใช้ทันที:
 
