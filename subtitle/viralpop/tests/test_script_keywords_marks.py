@@ -202,7 +202,7 @@ class TestT5GeometryLock(unittest.TestCase):
         self.assertEqual(script_ass.FONTSIZE, 104)
         self.assertEqual((script_ass.MARGIN_L, script_ass.MARGIN_R,
                           script_ass.MARGIN_V), (47, 47, 158))
-        self.assertEqual((script_ass.POS_X, script_ass.POS_Y), (540, 1580))
+        self.assertEqual((script_ass.POS_X, script_ass.POS_Y), (540, 1400))
         self.assertEqual((script_ass.OUTLINE, script_ass.SHADOW), (3, 1))
         self.assertEqual(script_width.FONTSIZE, 104)
         self.assertEqual((script_width.MARGIN_L, script_width.MARGIN_R),
@@ -221,7 +221,7 @@ class TestT5GeometryLock(unittest.TestCase):
         self.assertIn(",104,", style)
         self.assertIn(",1,3,1,2,", style)  # BorderStyle 1, Outline 3, Shadow 1
         self.assertIn(",47,47,158,", style)
-        self.assertIn(r"\pos(540,1580)", ass_text)
+        self.assertIn(r"\pos(540,1400)", ass_text)
 
     def test_clip04_script_all_fit_after_split(self):
         script = [

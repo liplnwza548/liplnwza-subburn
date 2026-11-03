@@ -18,8 +18,8 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont, features
 
 W, H = 1080, 1920
-STRIP_Y, STRIP_H = 1470, 340          # chip zone: kit cy=1635, chip h=140 + pop/rotate margin
-CHIP_CY = 1635 - STRIP_Y              # chip center inside strip
+STRIP_Y, STRIP_H = 1100, 340          # chip zone: TikTok safe-zone 2026-11-04 (Lip-approved): strip 1100-1440, chip cy=1265, chip h=140 + pop/rotate margin
+CHIP_CY = 1265 - STRIP_Y              # chip center inside strip
 INK = '#181b26'; WHITE = '#fffdf6'
 RED = '#f44336'; BLUE = '#2264d8'; YELLOW = '#ffd648'; GREEN = '#38b577'
 PALETTE = [YELLOW, BLUE, RED, GREEN]

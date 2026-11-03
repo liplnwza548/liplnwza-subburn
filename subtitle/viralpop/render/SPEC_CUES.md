@@ -13,8 +13,9 @@ HARD GATES (fail-loud, no exception possible):
      monotonic (next.start >= prev.end - eps); ASS centisecond-distinct.
   H4 no-mid-word cut — cuts only on word/syllable boundaries, never
      before a combining mark or after a stranded leading vowel.
-  H5 position-lock — POS (540,1580), Lip 2026-09-23: never move subs
-     to dodge the product. No \N (one line per cue).
+  H5 position-lock — POS (540,1400), Lip 2026-11-04 (was 1580;
+     TikTok safe-zone fix): never move subs to dodge the product.
+     No \N (one line per cue).
 
 READABILITY FLOORS (pass by number OR by Lip exception id):
   R1 duration >= 0.6s per cue.

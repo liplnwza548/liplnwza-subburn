@@ -24,7 +24,7 @@ v1.1 extras (required for production look matching batch01_v11):
 - Width gate + within-line Thai word split (no overflow)
 - Mark-shaping Layer1 overlays RETIRED 2026-09-24 (C6 frame QA proved the
   layer caused tofu/float; plain text shapes correctly — see render/SPEC_CUES.md)
-- Geometry locked: fontsize 104, margins 47/47/158, pos (540,1580)
+- Geometry locked: fontsize 104, margins 47/47/158, pos (540,1400)  # TikTok safe-zone 2026-11-04 (was 1580)
 - Overlap trim before burn; RUNBOOK: see RUNBOOK_burn_script_aligned_v11.md
 
 - `--script`: Lip's script `.txt`, ONE CUE PER LINE, verbatim.
@@ -167,7 +167,7 @@ Do not remove either helper without re-verifying both the overflow bug and the m
 ## SAFE POSITIONING
 Analyze available frames/shots.
 LIP-LOCKED EXCEPTION 2026-09-23: subtitle position stays FIXED at
-(540,1580) — never move subs to dodge the product, even when covering
+(540,1400) — never move subs to dodge the product, even when covering
 it. The avoid-list below applies to OTHER overlay graphics, not subs.
 Avoid:
 - faces

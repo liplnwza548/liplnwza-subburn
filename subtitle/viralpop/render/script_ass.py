@@ -58,14 +58,14 @@ PLAYRES_X = 1080
 PLAYRES_Y = 1920
 
 #: Proven batch01 Viral Pop geometry (T5 lock — Lip-signed look).
-#: Fontsize 104, margins 47/47/158, pos (540,1580)  # Lip-signed 2026-09-20 TikTok UI clear (was 1721), Outline 3 Shadow 1.
+#: Fontsize 104, margins 47/47/158, pos (540,1400)  # TikTok safe-zone 2026-11-04 (Lip-approved; was 1580, raised for 520px bottom clearance), Outline 3 Shadow 1.
 #: script_width.py MUST mirror these (a test pins them equal); the width
 #: budget is (1080-47-47)*0.94 = 926.84px.
 FONTSIZE = 104
 
 #: Bottom-centre caption anchor (proven batch01 composition).
 POS_X = 540
-POS_Y = 1580
+POS_Y = 1400
 MARGIN_L = 47
 MARGIN_R = 47
 MARGIN_V = 158
