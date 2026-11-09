@@ -6,7 +6,7 @@ T2 - No ffmpeg subtitles filter anywhere in the production burner.
 T3 - Thai glyph test: render a strip with tricky Thai (leading vowels,
      above/below marks, tone marks) and save it for a human eye check -
      no tofu boxes, no floating vowels.
-T4 - Style list lock: only the 6 Philip-approved styles are offered.
+T4 - Style list lock: 13 standalone style names are offered.
 """
 import re, sys
 from pathlib import Path
