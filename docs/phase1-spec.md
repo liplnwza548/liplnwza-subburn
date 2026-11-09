@@ -1,6 +1,6 @@
 # Phase 1: Audit + Foundation — specification
 
-Baseline: `39a2ff685c6e73a5dc2f1918e494bd8263bee2d6`. Phase 1 is documentation, development guardrails and offline tests only. Production renderer, notebook and its approval semantics remain unchanged. No private media, secrets, push, PR or merge.
+Baseline: `39a2ff685c6e73a5dc2f1918e494bd8263bee2d6`. Phase 1 is documentation, development guardrails and offline tests only. Production renderer, notebook and its approval semantics remain unchanged. No private media or secrets. Do not push or create a PR without explicit permission from Philip; do not merge as part of Phase 1.
 
 ## Current operation
 
