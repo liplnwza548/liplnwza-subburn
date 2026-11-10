@@ -579,5 +579,90 @@ class GateTests(unittest.TestCase):
             )
 
 
+class EvidenceStagesTests(unittest.TestCase):
+    checks = (
+        CheckRecord('renderer_exit_code', 'PASSED', 0, 0, None, ''),
+        CheckRecord('video_dimensions', 'PASSED', '1080x1920', '1080x1920', None, ''),
+        CheckRecord('duration_consistency', 'PASSED', 10.0, 10.0, None, ''),
+        CheckRecord('frame_rate_validity', 'PASSED', 30.0, 30.0, None, ''),
+        CheckRecord('audio_presence', 'PASSED', True, True, None, ''),
+        CheckRecord('audio_sample_rate', 'PASSED', 44100, 44100, None, ''),
+        CheckRecord('audio_loudness', 'PASSED', -16.0, 0.0, None, ''),
+        CheckRecord('qc_frame_extraction', 'PASSED', 3, 3, None, ''),
+        CheckRecord('human_audio_verification', 'NOT_CHECKED', None, 'audited_by_human', None, ''),
+        CheckRecord('human_visual_verification', 'NOT_CHECKED', None, 'audited_by_human', None, ''),
+    )
+
+    def test_qc_evaluated_stage_accepted(self):
+        record = create_evidence_record(
+            evidence_id='ev-qc-1',
+            job_id='job-1',
+            stage='QC_EVALUATED',
+            tool='subtitle.core.qc',
+            tool_version='1',
+            method='subprocess_execution',
+            command=('ffprobe', 'ffmpeg'),
+            input_digest_refs={
+                'source_media_sha256': '0' * 64,
+                'script_sha256': 'e' * 64,
+                'candidate_sha256': 'f' * 64,
+            },
+            artifact_sha256='f' * 64,
+            artifact_relpath='output/candidate.mp4',
+            captured_at='2026-11-10T12:00:00Z',
+            exit_code=0,
+            media_duration_seconds=10.0,
+            checks=self.checks,
+        )
+        self.assertEqual(record.stage, 'QC_EVALUATED')
+
+    def test_rendered_stage_still_rejected(self):
+        with self.assertRaises(EvidenceError):
+            create_evidence_record(
+                evidence_id='ev-qc-1',
+                job_id='job-1',
+                stage='RENDERED',
+                tool='subtitle.core.qc',
+                tool_version='1',
+                method='subprocess_execution',
+                command=('ffprobe', 'ffmpeg'),
+                input_digest_refs={
+                    'source_media_sha256': '0' * 64,
+                    'script_sha256': 'e' * 64,
+                    'candidate_sha256': 'f' * 64,
+                },
+                artifact_sha256='f' * 64,
+                artifact_relpath='output/candidate.mp4',
+                captured_at='2026-11-10T12:00:00Z',
+                exit_code=0,
+                media_duration_seconds=10.0,
+                checks=self.checks,
+            )
+
+    def test_existing_stages_still_accepted(self):
+        for stage in ('TRANSCRIBED', 'SCRIPT_EVIDENCE_CHECKED', 'ALIGNED', 'RENDER_PERMITTED'):
+            record = create_evidence_record(
+                evidence_id=f'ev-{stage.lower()}-1',
+                job_id='job-1',
+                stage=stage,
+                tool='subtitle.core.qc',
+                tool_version='1',
+                method='subprocess_execution',
+                command=('ffprobe', 'ffmpeg'),
+                input_digest_refs={
+                    'source_media_sha256': '0' * 64,
+                    'script_sha256': 'e' * 64,
+                    'candidate_sha256': 'f' * 64,
+                },
+                artifact_sha256='f' * 64,
+                artifact_relpath='output/candidate.mp4',
+                captured_at='2026-11-10T12:00:00Z',
+                exit_code=0,
+                media_duration_seconds=10.0,
+                checks=self.checks,
+            )
+            self.assertEqual(record.stage, stage)
+
+
 if __name__ == '__main__':
     unittest.main()
