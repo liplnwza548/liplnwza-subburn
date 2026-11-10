@@ -20,7 +20,7 @@ _TIMESTAMP = re.compile(r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$')
 _EVIDENCE_ID = re.compile(r'^[A-Za-z0-9._-]{1,64}$')
 CHECK_RESULTS = frozenset({'PASSED', 'FAILED', 'NOT_CHECKED', 'NOT_APPLICABLE'})
 METHODS = frozenset({'subprocess_execution', 'deterministic_check', 'synthetic_stub'})
-STAGES = frozenset({'TRANSCRIBED', 'SCRIPT_EVIDENCE_CHECKED', 'ALIGNED', 'RENDER_PERMITTED'})
+STAGES = frozenset({'TRANSCRIBED', 'SCRIPT_EVIDENCE_CHECKED', 'ALIGNED', 'RENDER_PERMITTED', 'QC_EVALUATED'})
 EVIDENCE_DIRNAME = 'evidence'
 
 
