@@ -4,6 +4,12 @@ The trusted host supplies every expected binding as a separate parameter, never
 by extracting expectations from grant_bytes. Only intake_copy with no processor
 is authorized here. No renderer, transcription, alignment or delivery runs.
 SOURCE_NOT_FOUND means no regular source file exists under the trusted root.
+
+P2-004 resume: when the job folder already exists, intake does not allocate
+staging again. It loads the frozen JobSpec plus checkpoint and event log
+recorded there and returns the frozen spec when every frozen binding matches
+the trusted host expectations; otherwise it denies politely with
+JOB_STATE_CONFLICT and never deletes the existing folder.
 """
 
 import hashlib
@@ -18,6 +24,11 @@ from pathlib import Path
 from .authorization import verify
 from .job import (JobSpec, SourceSnapshot, StagingPaths, create_job_spec,
                   validate_style_spec)
+from .audit import (AuditError, CHECKPOINT_FILENAME, EVENT_LOG_FILENAME,
+                    JOB_SPEC_FILENAME, append_event, load_job_record,
+                    save_checkpoint, save_job_spec)
+from .job import JobSpecError
+from .state import CheckpointError, JobEvent, initial_checkpoint
 
 SOURCE_DIGEST_MISMATCH = 'SOURCE_DIGEST_MISMATCH'
 UNSAFE_SOURCE_SYMLINK = 'UNSAFE_SOURCE_SYMLINK'
@@ -25,6 +36,7 @@ UNSAFE_PATH_TRAVERSAL = 'UNSAFE_PATH_TRAVERSAL'
 UNSAFE_OUTPUT_ALIAS = 'UNSAFE_OUTPUT_ALIAS'
 SOURCE_MUTATED_ERROR = 'SOURCE_MUTATED_ERROR'
 SOURCE_NOT_FOUND = 'SOURCE_NOT_FOUND'
+JOB_STATE_CONFLICT = 'JOB_STATE_CONFLICT'
 
 _DIGEST = re.compile(r'^[0-9a-f]{64}$')
 _JOB_ID = re.compile(r'^[A-Za-z0-9._-]{1,128}$')
@@ -93,7 +105,12 @@ def allocate_staging_paths(base_staging_dir: Path, job_id: str,
     jobs_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
     jobs_dir.chmod(0o700)
     # Exclusive allocation preserves an existing job on retry or collision.
-    job_dir.mkdir(mode=0o700)
+    # A pre-existing directory is a re-entry, not a fresh allocation: deny
+    # politely instead of leaking a raw FileExistsError (P2-004).
+    try:
+        job_dir.mkdir(mode=0o700)
+    except FileExistsError as exc:
+        raise _Deny(JOB_STATE_CONFLICT) from exc
     ready = False
     try:
         job_dir.chmod(0o700)
@@ -114,7 +131,13 @@ def copy_source_to_staging(source_path: Path, dest_path: Path,
                            expected_sha256: str) -> tuple[str, int]:
     dest_path = Path(dest_path)
     digest, byte_count = hashlib.sha256(), 0
-    with Path(source_path).open('rb') as source, dest_path.open('xb') as target:
+    try:
+        target = dest_path.open('xb')
+    except FileExistsError as exc:
+        # The staged file already exists: a re-entry, not a fresh copy.
+        # Deny politely instead of leaking a raw FileExistsError (P2-004).
+        raise _Deny(JOB_STATE_CONFLICT) from exc
+    with Path(source_path).open('rb') as source, target:
         while chunk := source.read(65536):
             target.write(chunk)
             digest.update(chunk)
@@ -210,6 +233,45 @@ def process_job_intake(grant_bytes: bytes, status_bytes: bytes, *, job_id: str,
         size = resolved_source.stat().st_size
         if pre_digest != source_ref['sha256']:
             raise _Deny(SOURCE_DIGEST_MISMATCH)
+        # P2-004 re-entry: an existing job folder is never re-allocated.
+        # Resume returns the frozen spec when every frozen binding matches
+        # the trusted host expectations; anything else denies politely
+        # with JOB_STATE_CONFLICT and the existing folder is never deleted.
+        if (type(job_id) is not str or not _JOB_ID.fullmatch(job_id)
+                or job_id in ('.', '..')):
+            raise _Deny('AUTH_SCHEMA_INVALID')
+        existing_job_dir = staging_base / 'jobs' / job_id
+        _reject_symlink_components(existing_job_dir, UNSAFE_OUTPUT_ALIAS)
+        if existing_job_dir.exists():
+            try:
+                record = load_job_record(existing_job_dir, job_id=job_id)
+            except (AuditError, JobSpecError, CheckpointError) as exc:
+                raise _Deny(JOB_STATE_CONFLICT) from exc
+            if record is None:
+                raise _Deny(JOB_STATE_CONFLICT)
+            frozen_spec, _frozen_checkpoint, _frozen_events = record
+            frozen_source = frozen_spec.source
+            if (frozen_spec.grant_id != grant_id
+                    or frozen_source.provider != source_ref['provider']
+                    or frozen_source.id != source_ref['id']
+                    or frozen_source.revision != source_ref['revision']
+                    or frozen_source.sha256 != source_ref['sha256']
+                    or frozen_spec.style_id != style_id
+                    or dict(frozen_spec.style_overrides) != style_overrides
+                    or dict(frozen_spec.review_destination) != review_destination
+                    or set(frozen_spec.allowed_actions) != set(allowed_actions)
+                    or set(frozen_spec.allowed_processors) != set(allowed_processors)
+                    or frozen_spec.retry_allowance != retry_allowance
+                    or Path(frozen_spec.staging.job_work_dir).parent != existing_job_dir):
+                raise _Deny(JOB_STATE_CONFLICT)
+            try:
+                staged_digest = compute_file_sha256(
+                    Path(frozen_spec.staging.staged_input_path))
+            except OSError as exc:
+                raise _Deny(SOURCE_MUTATED_ERROR) from exc
+            if staged_digest != frozen_spec.source.sha256:
+                raise _Deny(SOURCE_MUTATED_ERROR)
+            return IntakeResult(True, frozen_spec, None)
         staging = allocate_staging_paths(staging_base, job_id, resolved_source.name)
         job_dir = Path(staging.job_work_dir).parent
         assert_paths_do_not_alias(resolved_source, Path(staging.staged_input_path))
@@ -234,6 +296,19 @@ def process_job_intake(grant_bytes: bytes, status_bytes: bytes, *, job_id: str,
             )
         except ValueError as exc:
             raise _Deny(str(exc)) from exc
+        # P2-004: persist the frozen spec, the intake event and the INTAKE
+        # checkpoint so a later re-entry can resume instead of reallocating.
+        # job_dir is the fresh folder created above; on any failure here the
+        # existing finally block removes only this fresh folder.
+        save_job_spec(job_dir / JOB_SPEC_FILENAME, spec)
+        intake_checkpoint = initial_checkpoint(
+            spec, event_id='evt-intake-1', actor='offline_runner',
+            now=spec.created_at, evidence_refs=('ev_grant_verified',))
+        append_event(job_dir / EVENT_LOG_FILENAME, JobEvent(
+            'evt-intake-1', job_id, 'INTAKE', 'INTAKE', 1,
+            ('ev_grant_verified',), 'offline_runner', 'AUTHORIZED',
+            spec.created_at, 'intake accepted'))
+        save_checkpoint(job_dir / CHECKPOINT_FILENAME, intake_checkpoint)
         succeeded = True
         return IntakeResult(True, spec, None)
     except _Deny as exc:
