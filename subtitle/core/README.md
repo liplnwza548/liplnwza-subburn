@@ -1,0 +1,19 @@
+# P2-002 offline authorization contract
+
+This module is a pure, default-deny decision, not a new production entrypoint. The existing notebook, `approval.json`, renderers and delivery remain unchanged. It neither starts a renderer nor sends files. No auto mode is enabled. An unrestricted agent can bypass a Python gate by calling a CLI directly; a protected executor, actual issuer and protected status service are required before any production activation.
+
+Install the verifier dependency in the environment with `python -m pip install -r subtitle/core/requirements.txt`. Run `python -m unittest discover -s tests/phase2 -v` from the repository root. Test keys are ephemeral and synthetic.
+
+## Wire format v1
+
+Inputs are UTF-8 JSON bytes, at most 65536 bytes, with duplicate keys, floats and non-finite values rejected. Exact field sets are required and unknown fields are denied. Each identifier is 1–256 ASCII characters from `[A-Za-z0-9._:@/-]`. Timestamps are UTC whole seconds `YYYY-MM-DDTHH:MM:SSZ`. Signatures are canonical padded base64 of 64 Ed25519 bytes. `schema_version` is the string `1`.
+
+JobGrant fields: `schema_version, grant_id, job_id, issuer_id, key_id, issued_at, expires_at, source_ref, style_id, style_overrides, allowed_actions, allowed_processors, review_destination, retry_allowance, signature`. Source has exact fields `provider, id, revision, sha256`, with a lowercase 64-hex SHA-256 digest. Destination has `provider, id, owner_id`. Style is `paper-chips` or `viralpop`; only empty overrides are supported until specific bounds are defined. Actions must be from the policy's seven-action allowlist; processors are explicit identifiers. Retry allowance is an integer from 0 to 2. A grant's lifetime is at most 24 hours, issuance inclusive and expiry exclusive.
+
+Revocation status fields: `schema_version, grant_id, job_id, issuer_id, key_id, checked_at, status, signature`. `status` is `active` or `revoked`. The separate, host-pinned status verification key must attest the actual authoritative status of that specific grant and job; an agent-written timestamp or boolean is not evidence. Reject future timestamps and status older than five minutes. A status may be replayed during that five-minute window, which is the approved freshness limit, not instantaneous revocation.
+
+For each object remove `signature`, then serialize with Python `json.dumps(payload, sort_keys=True, ensure_ascii=True, separators=(',', ':'), allow_nan=False).encode('ascii')`. The strict v1 schema restricts payload values and makes that representation unambiguous; it is not claimed to be RFC 8785. Prepend the exact domain separator `b'ThaiSubburn JobGrant v1\x00'` or `b'ThaiSubburn Revocation v1\x00'` respectively, then verify with Ed25519. Canonical test vector: object `{"z":"ไทย","a":1}` becomes ASCII bytes `{"a":1,"z":"\\u0e44\\u0e17\\u0e22"}`. The module never signs.
+
+## Integration prerequisites
+
+`trusted_grant_keys` and `trusted_status_keys` map `(issuer_id, key_id)` to host-pinned Ed25519 public keys. `now`, the exact active job/source snapshot, requested style/options, owner-verified destination, action and processor must be supplied by a trusted host, not copied from an untrusted agent request. Each action, especially render and delivery, must invoke the verifier again with current time and fresh status. A trusted intake must attest the source snapshot; this module compares identifiers and does not hash or protect source bytes. The verifier compares a host-provided existing grant binding; it cannot atomically reserve or persist one. P2-004 must implement a protected, atomic replay ledger. A denial test around mocked callbacks demonstrates a caller honoring the decision, not enforcement over unrelated CLI calls. Evidence gates, trusted custody, destination ownership, and actual style eligibility certification belong to later work.
