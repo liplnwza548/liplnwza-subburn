@@ -1,0 +1,265 @@
+command: python -m unittest discover -s tests/phase2 -p 'test_*.py' -v
+commit: 8187cb93227b3e78608372df7457d5023c4a1c9d (branch phase2/p2-010-adversarial-review)
+date: 2026-11-11T18:55:38Z
+host: htch-runtime
+
+test_delivery_does_not_touch_source (test_adapters.AdapterTests.test_delivery_does_not_touch_source) ... ok
+test_external_destination_id_denied (test_adapters.AdapterTests.test_external_destination_id_denied) ... ok
+test_external_destination_provider_denied (test_adapters.AdapterTests.test_external_destination_provider_denied) ... ok
+test_missing_drive_credential_reported (test_adapters.AdapterTests.test_missing_drive_credential_reported) ... ok
+test_missing_fake_drive_root_denies (test_adapters.AdapterTests.test_missing_fake_drive_root_denies) ... ok
+test_missing_ffmpeg_blocks_preflight (test_adapters.AdapterTests.test_missing_ffmpeg_blocks_preflight) ... ok
+test_missing_parent_id_denies_delivery (test_adapters.AdapterTests.test_missing_parent_id_denies_delivery) ... ok
+test_missing_staging_root_denies_no_fallback (test_adapters.AdapterTests.test_missing_staging_root_denies_no_fallback) ... ok
+test_no_secret_in_capability_report (test_adapters.AdapterTests.test_no_secret_in_capability_report) ... ok
+test_offline_label_on_receipt_and_files (test_adapters.AdapterTests.test_offline_label_on_receipt_and_files) ... ok
+test_same_capability_report_both_adapters (test_adapters.AdapterTests.test_same_capability_report_both_adapters) ... ok
+test_same_decision_vm_and_colab (test_adapters.AdapterTests.test_same_decision_vm_and_colab) ... ok
+test_staging_overlapping_source_denied (test_adapters.AdapterTests.test_staging_overlapping_source_denied) ... ok
+test_test_keys_are_labeled_and_synthetic (test_adapters.AdapterTests.test_test_keys_are_labeled_and_synthetic) ... ok
+test_clock_boundary_expiry (test_adversarial.AdversarialTests.test_clock_boundary_expiry) ... ok
+test_direct_cli_bypasses_orchestrator (test_adversarial.AdversarialTests.test_direct_cli_bypasses_orchestrator) ... CUE_WARN: cue 0 ('สวัสดีตอนเช้า'): 7.3 syl/s over warn-rate 7.0 — fast, check against audio
+CUE_WARN: cue 1 ('วันนี้อากาศดีมาก'): 7.3 syl/s over warn-rate 7.0 — fast, check against audio
+SCRIPT-BURN REPORT: OK
+SCRIPT-ALIGNMENT GATE: OK — 2 cue(s) aligned, no mismatches. May build ASS.
+filter: -vf 'ass=sub.ass:fontsdir=fdir' (ass= only, bare filenames, cwd=temp)
+output: /tmp/tmpca20re4l/direct-viralpop.mp4
+geometry: 320x240 (source 320x240)
+duration: src 3.000s vs out 3.000s (delta 0.000s <= 0.1s)
+audio: present (source present)
+frames:
+  - /tmp/tmpca20re4l/direct-viralpop_qa/qa_01_10pct.png
+  - /tmp/tmpca20re4l/direct-viralpop_qa/qa_02_50pct.png
+  - /tmp/tmpca20re4l/direct-viralpop_qa/qa_03_90pct.png
+chips: 5 (1.67/s), speech 0.00-1.42s of 3.0s
+chips json: /tmp/tmpca20re4l/direct-chips.mp4.chips.json
+  frame 0/90
+ok
+test_drive_parent_symlink_rejected (test_adversarial.AdversarialTests.test_drive_parent_symlink_rejected) ... ok
+test_forged_passed_rejected (test_adversarial.AdversarialTests.test_forged_passed_rejected) ... ok
+test_now_does_not_change_mid_loop (test_adversarial.AdversarialTests.test_now_does_not_change_mid_loop) ... ok
+test_owner_id_off_by_one_rejected (test_adversarial.AdversarialTests.test_owner_id_off_by_one_rejected) ... ok
+test_quota_preserved_but_entrypoint_cannot_resume_mid_pipeline (test_adversarial.AdversarialTests.test_quota_preserved_but_entrypoint_cannot_resume_mid_pipeline) ... ok
+test_canonical_vector (test_authorization.AuthorizationTests.test_canonical_vector) ... ok
+test_context_mismatch_and_replay (test_authorization.AuthorizationTests.test_context_mismatch_and_replay) ... ok
+test_delivery_denied_without_fresh_status (test_authorization.AuthorizationTests.test_delivery_denied_without_fresh_status) ... ok
+test_ed25519_rfc8032_vector (test_authorization.AuthorizationTests.test_ed25519_rfc8032_vector) ... ok
+test_signature_tamper_and_untrusted (test_authorization.AuthorizationTests.test_signature_tamper_and_untrusted) ... ok
+test_status (test_authorization.AuthorizationTests.test_status) ... ok
+test_strict_schema_and_json (test_authorization.AuthorizationTests.test_strict_schema_and_json) ... ok
+test_time_boundaries (test_authorization.AuthorizationTests.test_time_boundaries) ... ok
+test_valid_and_same_job_resume (test_authorization.AuthorizationTests.test_valid_and_same_job_resume) ... ok
+test_existing_stages_still_accepted (test_gates.EvidenceStagesTests.test_existing_stages_still_accepted) ... ok
+test_qc_evaluated_stage_accepted (test_gates.EvidenceStagesTests.test_qc_evaluated_stage_accepted) ... ok
+test_rendered_stage_still_rejected (test_gates.EvidenceStagesTests.test_rendered_stage_still_rejected) ... ok
+test_cue_coverage_gap_or_overlap_rejected (test_gates.GateTests.test_cue_coverage_gap_or_overlap_rejected) ... ok
+test_forged_stt_as_mfa_rejected (test_gates.GateTests.test_forged_stt_as_mfa_rejected) ... ok
+test_gate_rejection_prevents_render_transition (test_gates.GateTests.test_gate_rejection_prevents_render_transition)
+Pre-render gate rejection prevents calling state transition. ... ok
+test_interpolated_timing_rejected (test_gates.GateTests.test_interpolated_timing_rejected) ... ok
+test_mfa_unk_ambiguity_triggers_blocked_needs_review (test_gates.GateTests.test_mfa_unk_ambiguity_triggers_blocked_needs_review) ... ok
+test_mfa_word_count_mismatch_rejected (test_gates.GateTests.test_mfa_word_count_mismatch_rejected) ... ok
+test_no_human_listening_reports_not_checked (test_gates.GateTests.test_no_human_listening_reports_not_checked) ... ok
+test_synthetic_stub_flag_validation (test_gates.GateTests.test_synthetic_stub_flag_validation) ... ok
+test_tampered_media_hash_invalidates_gate (test_gates.GateTests.test_tampered_media_hash_invalidates_gate) ... ok
+test_tampered_script_hash_invalidates_gate (test_gates.GateTests.test_tampered_script_hash_invalidates_gate) ... ok
+test_timing_exceeding_media_duration_rejected (test_gates.GateTests.test_timing_exceeding_media_duration_rejected) ... ok
+test_timing_nan_or_inf_rejected (test_gates.GateTests.test_timing_nan_or_inf_rejected) ... ok
+test_timing_negative_rejected (test_gates.GateTests.test_timing_negative_rejected) ... ok
+test_timing_overlapping_words_rejected (test_gates.GateTests.test_timing_overlapping_words_rejected) ... ok
+test_valid_mfa_provenance_passes_gate_g2 (test_gates.GateTests.test_valid_mfa_provenance_passes_gate_g2) ... ok
+test_destination_mismatch (test_job_intake.JobIntakeTests.test_destination_mismatch) ... ok
+test_empty_style (test_job_intake.JobIntakeTests.test_empty_style) ... ok
+test_expired_grant (test_job_intake.JobIntakeTests.test_expired_grant) ... ok
+test_grant_replay_for_another_job (test_job_intake.JobIntakeTests.test_grant_replay_for_another_job) ... ok
+test_happy_path_paper_chips (test_job_intake.JobIntakeTests.test_happy_path_paper_chips) ... ok
+test_happy_path_viralpop (test_job_intake.JobIntakeTests.test_happy_path_viralpop) ... ok
+test_invalid_signature (test_job_intake.JobIntakeTests.test_invalid_signature) ... ok
+test_invalid_staging_job_identifier (test_job_intake.JobIntakeTests.test_invalid_staging_job_identifier) ... ok
+test_invalid_trusted_host_parameters (test_job_intake.JobIntakeTests.test_invalid_trusted_host_parameters) ... ok
+test_job_spec_error_cleans_staging (test_job_intake.JobIntakeTests.test_job_spec_error_cleans_staging) ... ok
+test_job_spec_factory_rejects_invalid_invariants (test_job_intake.JobIntakeTests.test_job_spec_factory_rejects_invalid_invariants) ... ok
+test_job_spec_serialize_round_trip (test_job_intake.JobIntakeTests.test_job_spec_serialize_round_trip) ... ok
+test_malformed_grant_json (test_job_intake.JobIntakeTests.test_malformed_grant_json) ... ok
+test_missing_style_field (test_job_intake.JobIntakeTests.test_missing_style_field) ... ok
+test_non_empty_style_overrides (test_job_intake.JobIntakeTests.test_non_empty_style_overrides) ... ok
+test_path_traversal_source (test_job_intake.JobIntakeTests.test_path_traversal_source) ... ok
+test_revoked_grant (test_job_intake.JobIntakeTests.test_revoked_grant) ... ok
+test_source_digest_mismatch (test_job_intake.JobIntakeTests.test_source_digest_mismatch) ... ok
+test_source_immutability_hash_only (test_job_intake.JobIntakeTests.test_source_immutability_hash_only) ... ok
+test_source_metadata_mismatch (test_job_intake.JobIntakeTests.test_source_metadata_mismatch) ... ok
+test_source_mutates_after_copy (test_job_intake.JobIntakeTests.test_source_mutates_after_copy) ... ok
+test_source_mutates_during_copy (test_job_intake.JobIntakeTests.test_source_mutates_during_copy) ... ok
+test_source_not_found (test_job_intake.JobIntakeTests.test_source_not_found) ... ok
+test_staged_input_and_output_hardlink_aliases (test_job_intake.JobIntakeTests.test_staged_input_and_output_hardlink_aliases) ... ok
+test_staging_aliasing_source (test_job_intake.JobIntakeTests.test_staging_aliasing_source) ... ok
+test_staging_directory_symlink (test_job_intake.JobIntakeTests.test_staging_directory_symlink) ... ok
+test_staging_suffix_validation (test_job_intake.JobIntakeTests.test_staging_suffix_validation) ... ok
+test_stale_revocation_status (test_job_intake.JobIntakeTests.test_stale_revocation_status) ... ok
+test_strict_job_spec_parser (test_job_intake.JobIntakeTests.test_strict_job_spec_parser) ... ok
+test_symlink_before_parent_traversal (test_job_intake.JobIntakeTests.test_symlink_before_parent_traversal) ... ok
+test_symlink_parent_directory (test_job_intake.JobIntakeTests.test_symlink_parent_directory) ... ok
+test_symlink_source_file (test_job_intake.JobIntakeTests.test_symlink_source_file) ... ok
+test_trusted_grant_permission_and_retry_bindings (test_job_intake.JobIntakeTests.test_trusted_grant_permission_and_retry_bindings) ... ok
+test_unauthorized_intake_action (test_job_intake.JobIntakeTests.test_unauthorized_intake_action) ... ok
+test_unauthorized_style_from_extra_13 (test_job_intake.JobIntakeTests.test_unauthorized_style_from_extra_13) ... ok
+test_unexpected_exception_propagates (test_job_intake.JobIntakeTests.test_unexpected_exception_propagates) ... ok
+test_backoff_recorded_not_slept_in_tests (test_orchestrator.OrchestratorTests.test_backoff_recorded_not_slept_in_tests) ... ok
+test_exhausted_retries_go_to_failed_job (test_orchestrator.OrchestratorTests.test_exhausted_retries_go_to_failed_job) ... ok
+test_orchestrate_auto_mode_false_halts_at_render_permitted_zero_renders (test_orchestrator.OrchestratorTests.test_orchestrate_auto_mode_false_halts_at_render_permitted_zero_renders) ... ok
+test_orchestrate_cue_coverage_gap_gate_g3_zero_renders (test_orchestrator.OrchestratorTests.test_orchestrate_cue_coverage_gap_gate_g3_zero_renders) ... ok
+test_orchestrate_expired_grant_zero_renders (test_orchestrator.OrchestratorTests.test_orchestrate_expired_grant_zero_renders) ... ok
+test_orchestrate_happy_path_paper_chips_auto_mode_true (test_orchestrator.OrchestratorTests.test_orchestrate_happy_path_paper_chips_auto_mode_true) ... ok
+test_orchestrate_happy_path_viralpop_auto_mode_true (test_orchestrator.OrchestratorTests.test_orchestrate_happy_path_viralpop_auto_mode_true) ... ok
+test_orchestrate_invalid_grant_schema_zero_renders (test_orchestrator.OrchestratorTests.test_orchestrate_invalid_grant_schema_zero_renders) ... ok
+test_orchestrate_mfa_unk_word_ambiguity_gate_g2_zero_renders (test_orchestrator.OrchestratorTests.test_orchestrate_mfa_unk_word_ambiguity_gate_g2_zero_renders) ... ok
+test_orchestrate_replay_grant_zero_renders (test_orchestrator.OrchestratorTests.test_orchestrate_replay_grant_zero_renders) ... ok
+test_orchestrate_revocation_between_stages_cancels_job_zero_renders (test_orchestrator.OrchestratorTests.test_orchestrate_revocation_between_stages_cancels_job_zero_renders) ... ok
+test_orchestrate_source_digest_mismatch_zero_renders (test_orchestrator.OrchestratorTests.test_orchestrate_source_digest_mismatch_zero_renders) ... ok
+test_orchestrate_stale_revocation_between_stages_zero_renders (test_orchestrator.OrchestratorTests.test_orchestrate_stale_revocation_between_stages_zero_renders) ... ok
+test_orchestrate_stt_forged_as_mfa_gate_g2_zero_renders (test_orchestrator.OrchestratorTests.test_orchestrate_stt_forged_as_mfa_gate_g2_zero_renders) ... ok
+test_orchestrate_style_overrides_forbidden_zero_renders (test_orchestrator.OrchestratorTests.test_orchestrate_style_overrides_forbidden_zero_renders) ... ok
+test_orchestrate_transcript_conflict_gate_g1_zero_renders (test_orchestrator.OrchestratorTests.test_orchestrate_transcript_conflict_gate_g1_zero_renders) ... ok
+test_orchestrate_unsupported_style_zero_renders (test_orchestrator.OrchestratorTests.test_orchestrate_unsupported_style_zero_renders) ... ok
+test_orchestrate_untrusted_grant_signature_zero_renders (test_orchestrator.OrchestratorTests.test_orchestrate_untrusted_grant_signature_zero_renders) ... ok
+test_qc_rerun_fresh_after_retry_render (test_orchestrator.OrchestratorTests.test_qc_rerun_fresh_after_retry_render) ... ok
+test_retry_counts_survive_restart (test_orchestrator.OrchestratorTests.test_retry_counts_survive_restart) ... ok
+test_retryable_render_failure_retries_and_succeeds (test_orchestrator.OrchestratorTests.test_retryable_render_failure_retries_and_succeeds) ... ok
+test_reverify_before_every_retry (test_orchestrator.OrchestratorTests.test_reverify_before_every_retry) ... ok
+test_revoked_between_retries_cancels_job (test_orchestrator.OrchestratorTests.test_revoked_between_retries_cancels_job) ... ok
+test_synthetic_offline_one_clip_render_when_ffmpeg_available (test_orchestrator.OrchestratorTests.test_synthetic_offline_one_clip_render_when_ffmpeg_available) ... ok
+test_early_return_does_not_run_probes (test_qc.QCTestCase.test_early_return_does_not_run_probes)
+A denied decision + a missing candidate + missing binaries ... ok
+test_early_return_when_authorization_denied (test_qc.QCTestCase.test_early_return_when_authorization_denied)
+A denied authorization decision blocks QC before any probe. ... ok
+test_qc_duration_drift_exceeds_tolerance_blocks (test_qc.QCTestCase.test_qc_duration_drift_exceeds_tolerance_blocks)
+Verify candidate duration drift exceeding 0.1s tolerance blocks QC. ... ok
+test_qc_ffprobe_failure_or_corrupt_json_fails_closed (test_qc.QCTestCase.test_qc_ffprobe_failure_or_corrupt_json_fails_closed)
+Verify ffprobe process failure fails-closed without unhandled exceptions. ... ok
+test_qc_happy_path_paper_chips (test_qc.QCTestCase.test_qc_happy_path_paper_chips)
+Verify perfect technical QC pass for paper-chips style with valid frame records. ... ok
+test_qc_happy_path_viralpop (test_qc.QCTestCase.test_qc_happy_path_viralpop)
+Verify perfect technical QC pass for viralpop style advances to READY_FOR_REVIEW. ... ok
+test_qc_loudnorm_unparseable_fails_closed (test_qc.QCTestCase.test_qc_loudnorm_unparseable_fails_closed)
+Verify unparseable loudnorm stderr fails-closed to BLOCKED without guessed values. ... ok
+test_qc_missing_audio_stream_when_source_had_audio_fails (test_qc.QCTestCase.test_qc_missing_audio_stream_when_source_had_audio_fails)
+Verify candidate missing audio stream when source has audio fails check. ... ok
+test_qc_missing_duration_metadata_fails_closed (test_qc.QCTestCase.test_qc_missing_duration_metadata_fails_closed)
+Verify ffprobe returning 'N/A' duration fails duration_consistency check. ... ok
+test_qc_no_listening_records_honest_not_checked (test_qc.QCTestCase.test_qc_no_listening_records_honest_not_checked)
+Verify perfect technical pass records human sensory modalities honestly as NOT_CHECKED. ... ok
+test_qc_output_digest_mismatch_detects_mutation_blocks (test_qc.QCTestCase.test_qc_output_digest_mismatch_detects_mutation_blocks)
+Verify candidate media mutation on disk fails cryptographic_digests check. ... ok
+test_qc_output_file_missing_or_zero_bytes_blocks (test_qc.QCTestCase.test_qc_output_file_missing_or_zero_bytes_blocks)
+Verify missing candidate output file blocks QC and marks check FAILED. ... ok
+test_qc_ready_for_review_is_terminal_locked (test_qc.QCTestCase.test_qc_ready_for_review_is_terminal_locked)
+Verify READY_FOR_REVIEW is a locked terminal state rejecting subsequent transitions. ... ok
+test_qc_rejects_fabricated_human_audio_verification_passed (test_qc.QCTestCase.test_qc_rejects_fabricated_human_audio_verification_passed)
+Verify create_evidence_record rejects fabricated human audio verification passed. ... ok
+test_qc_rejects_forged_passed_flag (test_qc.QCTestCase.test_qc_rejects_forged_passed_flag)
+Verify QCReport and QCResult cannot be forged with global 'passed' boolean flag. ... ok
+test_qc_renderer_exit_code_nonzero_blocks (test_qc.QCTestCase.test_qc_renderer_exit_code_nonzero_blocks)
+Verify non-zero renderer exit code fails check and blocks advancing. ... ok
+test_qc_source_digest_mismatch_detects_mutation_blocks (test_qc.QCTestCase.test_qc_source_digest_mismatch_detects_mutation_blocks)
+Verify staged source media mutation on disk fails cryptographic_digests check. ... ok
+test_qc_state_skip_from_rendered_to_ready_for_review_forbidden (test_qc.QCTestCase.test_qc_state_skip_from_rendered_to_ready_for_review_forbidden)
+Verify skipping QC_EVALUATED directly to READY_FOR_REVIEW is rejected with STATE_SKIP_FORBIDDEN. ... ok
+test_qc_state_transitions_via_reduce_transition (test_qc.QCTestCase.test_qc_state_transitions_via_reduce_transition)
+Verify sequential mainline transitions from RENDERED to QC_EVALUATED to READY_FOR_REVIEW. ... ok
+test_qc_synthetic_mp4_integration_when_ffmpeg_available (test_qc.QCTestCase.test_qc_synthetic_mp4_integration_when_ffmpeg_available)
+Verify full unmocked run_qc integration with real FFmpeg/ffprobe synthetic video. ... ok
+test_qc_video_dimensions_mismatch_blocks (test_qc.QCTestCase.test_qc_video_dimensions_mismatch_blocks)
+Verify video dimension mismatch between source and candidate blocks QC. ... ok
+test_build_renderer_command_paper_chips_uses_stt_and_tmpdir (test_renderer_adapter.RendererAdapterTests.test_build_renderer_command_paper_chips_uses_stt_and_tmpdir) ... ok
+test_build_renderer_command_viralpop_uses_words_json_not_groq_stt (test_renderer_adapter.RendererAdapterTests.test_build_renderer_command_viralpop_uses_words_json_not_groq_stt) ... ok
+test_execute_renderer_missing_output_fails_closed (test_renderer_adapter.RendererAdapterTests.test_execute_renderer_missing_output_fails_closed) ... ok
+test_execute_renderer_nonzero_exit_fails_and_orchestrator_records_failed_job (test_renderer_adapter.RendererAdapterTests.test_execute_renderer_nonzero_exit_fails_and_orchestrator_records_failed_job) ... ok
+test_execute_renderer_timeout_fails_and_orchestrator_records_failed_job (test_renderer_adapter.RendererAdapterTests.test_execute_renderer_timeout_fails_and_orchestrator_records_failed_job) ... ok
+test_prepare_mfa_words_timeline_format (test_renderer_adapter.RendererAdapterTests.test_prepare_mfa_words_timeline_format) ... ok
+test_exhausted_retries_go_to_failed_job (test_retry.TestRetryDenyPath.test_exhausted_retries_go_to_failed_job)
+C2-01: Exhausted retries transition target to FAILED_JOB with action exhausted. ... ok
+test_no_inputs_fails_closed (test_retry.TestRetryDenyPath.test_no_inputs_fails_closed)
+C2-03: No failure inputs provided fails closed to BLOCKED_NEEDS_REVIEW. ... ok
+test_unknown_deny_code_fails_closed (test_retry.TestRetryDenyPath.test_unknown_deny_code_fails_closed)
+C2-02: Unknown deny code fails closed to BLOCKED_NEEDS_REVIEW as non-retryable. ... ok
+test_intake_staging_failure_is_retryable (test_retry.TestRetryFaultInjection.test_intake_staging_failure_is_retryable)
+C5-02: Intake staging storage read timeout is retryable under quota. ... ok
+test_mfa_timeout_exception_is_retryable (test_retry.TestRetryFaultInjection.test_mfa_timeout_exception_is_retryable)
+C5-04: MFA alignment TimeoutError maps to STORAGE_READ_TIMEOUT and is retryable. ... ok
+test_render_failure_is_retryable (test_retry.TestRetryFaultInjection.test_render_failure_is_retryable)
+C5-01: Render candidate execution failure is retryable under quota. ... ok
+test_transcribe_external_service_failure_is_retryable (test_retry.TestRetryFaultInjection.test_transcribe_external_service_failure_is_retryable)
+C5-03: Transcribe processor external service 503 is retryable with doubled backoff. ... ok
+test_backoff_exact_with_zero_jitter (test_retry.TestRetryHappyPath.test_backoff_exact_with_zero_jitter)
+C1-03: Backoff calculation is deterministic when jitter is zero and bounded by cap+jitter. ... ok
+test_second_retry_then_success_path (test_retry.TestRetryHappyPath.test_second_retry_then_success_path)
+C1-02: Second retry under quota is permitted with doubled base backoff. ... ok
+test_single_retry_then_success_path (test_retry.TestRetryHappyPath.test_single_retry_then_success_path)
+C1-01: First retry under quota is permitted with exponential backoff. ... ok
+test_expired_grant_blocked_authorization (test_retry.TestRetryNonRetryable.test_expired_grant_blocked_authorization)
+C3-02: Expired grant transitions to BLOCKED_AUTHORIZATION. ... ok
+test_hash_mismatch_blocked_authorization (test_retry.TestRetryNonRetryable.test_hash_mismatch_blocked_authorization)
+C3-03: Source hash mismatch transitions to BLOCKED_AUTHORIZATION. ... ok
+test_loudness_warning_never_triggers_retry (test_retry.TestRetryNonRetryable.test_loudness_warning_never_triggers_retry)
+C3-05: Loudness warning transitions to READY_FOR_REVIEW and never triggers retry. ... ok
+test_missing_mfa_and_ambiguous_speech_blocked_needs_review (test_retry.TestRetryNonRetryable.test_missing_mfa_and_ambiguous_speech_blocked_needs_review)
+C3-04: Missing MFA evidence and ambiguous speech transition to BLOCKED_NEEDS_REVIEW. ... ok
+test_revoked_grant_goes_to_cancelled (test_retry.TestRetryNonRetryable.test_revoked_grant_goes_to_cancelled)
+C3-01: Revoked grant transitions to CANCELLED and is non-retryable. ... ok
+test_quota_is_per_failure_key (test_retry.TestRetryRepeatedFailures.test_quota_is_per_failure_key)
+C4-02: Quota is tracked independently per failure key. ... ok
+test_same_key_exhausted_after_three_attempts (test_retry.TestRetryRepeatedFailures.test_same_key_exhausted_after_three_attempts)
+C4-01: Same key is exhausted after three completed attempts under retry_allowance=2. ... ok
+test_zero_and_one_allowance_boundaries (test_retry.TestRetryRepeatedFailures.test_zero_and_one_allowance_boundaries)
+C4-03: Boundary checks for retry_allowance 0 and 1. ... ok
+test_attempt_counts_survive_checkpoint_round_trip (test_retry.TestRetryRestartDurability.test_attempt_counts_survive_checkpoint_round_trip)
+C6-01: Checkpoint attempt counts survive disk serialization and round-trip. ... ok
+test_attempt_counts_survive_restart_simulation (test_retry.TestRetryRestartDurability.test_attempt_counts_survive_restart_simulation)
+C6-02: Attempt counts survive simulated process restart without count reset. ... ok
+test_retry_event_survives_in_event_log (test_retry.TestRetryRestartDurability.test_retry_event_survives_in_event_log)
+C6-03: Retry event persisted to event log survives audit load. ... ok
+test_revocation_between_retries_cancels_and_preserves_counts (test_retry.TestRetryRevocation.test_revocation_between_retries_cancels_and_preserves_counts)
+C7-02: Revocation between retries cancels and preserves attempt counts without mutation. ... ok
+test_revocation_on_first_attempt_cancels (test_retry.TestRetryRevocation.test_revocation_on_first_attempt_cancels)
+C7-01: Revocation on first attempt transitions to CANCELLED and disallows retry. ... ok
+test_qc_system_fault_stays_failed_job_not_failed_system (test_retry.TestRetrySystemPropagation.test_qc_system_fault_stays_failed_job_not_failed_system)
+C8-03: QC system fault stays FAILED_JOB and does not propagate to FAILED_SYSTEM (C11). ... ok
+test_system_dependency_missing_propagates_failed_system (test_retry.TestRetrySystemPropagation.test_system_dependency_missing_propagates_failed_system)
+C8-01: Missing system dependency propagates NON_RETRYABLE to FAILED_SYSTEM. ... ok
+test_system_out_of_disk_propagates_failed_system (test_retry.TestRetrySystemPropagation.test_system_out_of_disk_propagates_failed_system)
+C8-02: Out of disk system fault propagates to FAILED_SYSTEM via code and exception. ... ok
+test_atomic_ledger_file_location (test_state.AuditPersistenceTests.test_atomic_ledger_file_location) ... ok
+test_atomic_write_failure_leaves_target_byte_identical (test_state.AuditPersistenceTests.test_atomic_write_failure_leaves_target_byte_identical) ... ok
+test_checkpoint_wrong_schema_or_job_rejected (test_state.AuditPersistenceTests.test_checkpoint_wrong_schema_or_job_rejected) ... ok
+test_corrupt_event_log_middle_line_rejected (test_state.AuditPersistenceTests.test_corrupt_event_log_middle_line_rejected) ... ok
+test_event_log_revision_gap_rejected (test_state.AuditPersistenceTests.test_event_log_revision_gap_rejected) ... ok
+test_load_job_record_missing_checkpoint (test_state.AuditPersistenceTests.test_load_job_record_missing_checkpoint) ... ok
+test_replay_ledger_bind_resume_replay (test_state.AuditPersistenceTests.test_replay_ledger_bind_resume_replay) ... ok
+test_restart_resume_from_checkpoint (test_state.AuditPersistenceTests.test_restart_resume_from_checkpoint) ... ok
+test_allocate_existing_dir_denied_politely (test_state.IntakeResumeTests.test_allocate_existing_dir_denied_politely) ... ok
+test_copy_existing_dest_denied_politely (test_state.IntakeResumeTests.test_copy_existing_dest_denied_politely) ... ok
+test_intake_persists_spec_checkpoint_event_log (test_state.IntakeResumeTests.test_intake_persists_spec_checkpoint_event_log) ... ok
+test_intake_reentry_different_grant_denied_conflict (test_state.IntakeResumeTests.test_intake_reentry_different_grant_denied_conflict) ... ok
+test_intake_reentry_returns_frozen_spec (test_state.IntakeResumeTests.test_intake_reentry_returns_frozen_spec) ... ok
+test_intake_reentry_tampered_staged_file (test_state.IntakeResumeTests.test_intake_reentry_tampered_staged_file) ... ok
+test_intake_reentry_without_record_denied_conflict (test_state.IntakeResumeTests.test_intake_reentry_without_record_denied_conflict) ... ok
+test_blocked_needs_review_resume (test_state.StateTransitionTests.test_blocked_needs_review_resume) ... ok
+test_checkpoint_round_trip_and_tamper (test_state.StateTransitionTests.test_checkpoint_round_trip_and_tamper) ... ok
+test_duplicate_event_is_idempotent (test_state.StateTransitionTests.test_duplicate_event_is_idempotent) ... ok
+test_empty_evidence_rejected (test_state.StateTransitionTests.test_empty_evidence_rejected) ... ok
+test_event_round_trip_and_tamper (test_state.StateTransitionTests.test_event_round_trip_and_tamper) ... ok
+test_forbidden_skips_rejected (test_state.StateTransitionTests.test_forbidden_skips_rejected) ... ok
+test_fresh_event_same_state_is_not_duplicate (test_state.StateTransitionTests.test_fresh_event_same_state_is_not_duplicate) ... ok
+test_increment_attempt_counter (test_state.StateTransitionTests.test_increment_attempt_counter) ... ok
+test_initial_checkpoint_validation (test_state.StateTransitionTests.test_initial_checkpoint_validation) ... ok
+test_is_terminal_state_scope (test_state.StateTransitionTests.test_is_terminal_state_scope) ... ok
+test_terminal_states_locked (test_state.StateTransitionTests.test_terminal_states_locked) ... ok
+test_valid_path_reaches_ready_for_review (test_state.StateTransitionTests.test_valid_path_reaches_ready_for_review) ... ok
+test_validate_transition_matrix (test_state.StateTransitionTests.test_validate_transition_matrix) ... ok
+
+----------------------------------------------------------------------
+Ran 189 tests in 16.395s
+
+OK
+strip: 27 unique frames of 90
+DONE: /tmp/tmpca20re4l/direct-chips.mp4
