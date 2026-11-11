@@ -33,6 +33,7 @@ import math
 import hashlib
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import time
@@ -58,6 +59,20 @@ class RenderExecutionResult:
     stdout: str
     stderr: str
     error_message: str | None
+
+
+def _snapshot_burner_temp_dirs() -> set[Path] | None:
+    """Return existing burner temp directories under /tmp, or None if unreadable."""
+    try:
+        with os.scandir('/tmp') as entries:
+            return {
+                Path('/tmp') / entry.name
+                for entry in entries
+                if entry.name.startswith(('chipstrip-', 'protostrip-'))
+                and entry.is_dir(follow_symlinks=False)
+            }
+    except OSError:
+        return None
 
 
 def _reject_constant(value: str) -> None:
@@ -313,6 +328,7 @@ def execute_renderer(
     if isinstance(timeout_seconds, bool) or not isinstance(timeout_seconds, int) or timeout_seconds <= 0:
         raise RendererAdapterError("timeout_seconds must be a positive int")
 
+    burner_temp_dirs_before = _snapshot_burner_temp_dirs()
     start_time = time.monotonic()
     try:
         proc = subprocess.run(
@@ -323,6 +339,7 @@ def execute_renderer(
             timeout=timeout_seconds,
             env=env,
         )
+        duration = float(time.monotonic() - start_time)
     except subprocess.TimeoutExpired:
         duration = float(time.monotonic() - start_time)
         return RenderExecutionResult(
@@ -351,8 +368,12 @@ def execute_renderer(
             stderr="",
             error_message=str(exc),
         )
+    finally:
+        burner_temp_dirs_after = _snapshot_burner_temp_dirs()
+        if burner_temp_dirs_before is not None and burner_temp_dirs_after is not None:
+            for temp_dir in burner_temp_dirs_after - burner_temp_dirs_before:
+                shutil.rmtree(temp_dir, ignore_errors=True)
 
-    duration = float(time.monotonic() - start_time)
     stdout_truncated = (proc.stdout or "")[:4000]
     stderr_truncated = (proc.stderr or "")[:4000]
 
