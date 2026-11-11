@@ -461,7 +461,7 @@ class AdversarialTests(unittest.TestCase):
     # The security property (quota cannot be reset across a restart)
     # holds; the functional gap (a crashed mid-pipeline job cannot
     # be continued through the public entrypoint at all) is recorded
-    # as a P1 observation in docs/phase2/review.md.
+    # as a P2 observation in docs/phase2/review.md.
     def test_quota_preserved_but_entrypoint_cannot_resume_mid_pipeline(self):
         first = self.run_job(auto_mode=False)
         self.assertEqual(first.checkpoint.current_state, 'RENDER_PERMITTED')

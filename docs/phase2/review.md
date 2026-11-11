@@ -377,6 +377,10 @@ inventory §E ตั้งแต่แรก ส่วนตัวที่ 3 �
   ว่าจะเอาทางต่องานกลางทางหรือไม่ (ถ้าเอาต้องออกแบบให้ชัด ไม่ใช่แอบแก้
   `_step_intake`)
 - **เจ้าของ:** ฟิลิป (สั่งแยก) — **กำหนด:** ตั๋วหลัง Phase 2 ยังไม่กำหนดวัน
+- **หมายเหตุเรื่องชื่อเทสต์:** แผน P2-010 §5.3 ใช้ชื่อ
+  `test_quota_exhausted_across_restart_via_orchestrator` แต่ชื่อที่
+  implement จริงคือ `test_quota_preserved_but_entrypoint_cannot_resume_mid_pipeline`
+  (สื่อผลจริงได้ดีกว่า — บันทึกไว้ตรงนี้ให้ตรงกัน)
 
 ### P2-A1-01 — `diff-check.txt` อ้าง staged set 9 ไฟล์ ทั้งที่ PR มี 10 ไฟล์ (แกน 1 เจอ; ส่วนหนึ่งซ้ำ F-AX2-2)
 
@@ -507,6 +511,7 @@ P2-010 ผ่าน = **"Phase 2 offline milestone ผ่าน" เท่าน
 4. Real MFA/Groq/platform tests (live — อยู่ในรายการ NOT_RUN)
 5. Representative listening and visual human inspection (คนฟัง/ดูจริง — อยู่ในรายการ NOT_RUN)
 6. ฟิลิปอนุมัติแยกต่างหาก (explicit separate approval)
+7. Documented limitations (รายการข้อจำกัดที่เขียนไว้ในเอกสารนี้ — ดูหัวข้อ 7, 8, 10, 11)
 
 **ห้ามเขียนในเอกสารนี้โดยเด็ดขาด:** "พร้อม production", "ปลอดภัยเต็มรูปแบบ",
 "agent bypass ไม่ได้", "ผ่านการตรวจ production" — คำที่อนุญาตมีแค่

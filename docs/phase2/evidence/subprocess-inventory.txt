@@ -1,10 +1,18 @@
 # Subprocess inventory (P2-010, plan section 6.1 row N-03 / threat row E-09)
-# Generated from real greps on branch phase2/p2-010-adversarial-review.
+# CORRECTED 2026-11-12 at W0 (P2-A1-01 / P0-A1-01): the grep below previously
+# covered only subtitle/core/ + subtitle/adapters/, although plan N-03 orders
+# a whole-tree grep of subtitle/. The 3rd render path
+# (subtitle/styles/burn_styles.py) was missed because of that narrower scope.
+# This version greps the whole subtitle/ tree and lists every real call site.
 # Rule: a "renderer entrypoint" is a call site that can start a render.
 # QC probes only read media; they never produce a video.
+#
+# Evidence: the inventory being complete does NOT close threat row E-09.
+# E-09 stays FAIL in threat-matrix.csv until the 3rd path is actually
+# controlled (W2). See review.md P0-A1-01.
 
-command: grep -rn "subprocess" subtitle/core/ subtitle/adapters/ --include="*.py"
-date: 2026-11-11 (recorded during the P2-010 evidence run)
+command: grep -rn "subprocess" subtitle/ --include="*.py"
+date: 2026-11-12 (W0 — re-grepped whole tree; previous version dated 2026-11-11)
 shell=True anywhere under subtitle/: 0 results (grep -rn "shell=True" subtitle/ --include="*.py")
 
 ## A. Real subprocess.run call sites in Phase 2 core code (4 sites, all shell=False)
@@ -21,6 +29,10 @@ shell=True anywhere under subtitle/: 0 results (grep -rn "shell=True" subtitle/ 
 subtitle/core/orchestrator.py:1201  ->  render_one_clip()  ->  renderer_adapter.execute_renderer()
                                        ->  subprocess.run:318 (shell=False)
 No other code path in subtitle/core/ or subtitle/adapters/ invokes a burner.
+NOTE: this section covers only the orchestrator-controlled path. Standalone
+burner CLIs that can render without the orchestrator live outside it — see
+sections E and F. They are render entrypoints too, and E-09 stays FAIL while
+one exists uncontrolled.
 
 ## C. Inside the burners (legacy code, runs INSIDE the burner subprocess above)
 
@@ -34,6 +46,8 @@ entrypoints into the render path. Listed here so the inventory is complete:
 | subtitle/viralpop/render/render_subtitles.py:31,48,105 | subprocess.check_output / run | ffprobe/ffmpeg helpers (inside the burner) |
 | subtitle/viralpop/render/stt_guard.py:142 | subprocess.run(...) | guard check (inside the burner) |
 | subtitle/viralpop/render/build_clip.py:47 | subprocess.check_output(...) | ffprobe helper (inside the burner) |
+| subtitle/paper-chips/chip_burn.py:235 | subprocess.check_output(...) | ffprobe duration probe (inside the burner) |
+| subtitle/paper-chips/chip_burn.py:274 | subprocess.run(...) | ffmpeg -y burn (inside the burner) |
 
 ## D. Adapters: no subprocess at all
 
@@ -50,9 +64,44 @@ test_direct_cli_bypasses_orchestrator (E-02): both CLIs produce a real
 output file when called directly. Recorded as known limitation L2 in
 docs/phase2/review.md. It is NOT a new entrypoint found by P2-010.
 
-## Verdict (E-09)
+## F. Standalone burner CLI — the 3rd render entrypoint (ADDED at W0; was missing)
 
-Exactly the 2 intended invocation paths exist in Phase 2 core code:
-(1) renderer_adapter.execute_renderer -> burner subprocess;
-(2) qc.py probes (ffprobe/ffmpeg, read-only).
-No third renderer entrypoint was found. PASS.
+subtitle/styles/burn_styles.py — a standalone CLI burner (13 Philip-approved
+styles, added 2026-11-04; NOT wired into the workflow notebook, see
+docs/phase1-spec.md:7). It renders video without the orchestrator and without
+any JobGrant:
+
+| file:line | call | purpose |
+|---|---|---|
+| subtitle/styles/burn_styles.py:495 | subprocess.check_output(...) | ffprobe duration probe |
+| subtitle/styles/burn_styles.py:527 | subprocess.run(...) | ffmpeg -y burn (writes --out, overwrites silently) |
+
+Entry point: main() at burn_styles.py:469, --out required at :478.
+Its docstring (:23) claims "it never overwrites an existing clip" although
+:522 uses ffmpeg -y and :492 write_text overwrites <out>.proto.json silently.
+Status: UNCONTROLLED — threat row E-09 stays FAIL until W2 closes it
+(see review.md P0-A1-01). Temp: mkdtemp(prefix='protostrip-', dir='/tmp')
+at :501 with no cleanup (P1-A1-01).
+
+## G. Test-only call sites (run only under unittest, not production paths)
+
+| file:line | call | purpose |
+|---|---|---|
+| subtitle/viralpop/tests/test_primary_bag_demo.py:153 | subprocess.run(...) | test-only burner invocation |
+| subtitle/viralpop/tests/test_stt_guard.py:100 | subprocess.run(...) | test-only guard check |
+| subtitle/viralpop/tests/test_script_burn.py:166 | subprocess.run(...) | test-only burner invocation |
+| subtitle/viralpop/tests/test_script_keywords_marks.py:456 | subprocess.run(...) | test-only burner invocation |
+
+Other "subprocess" mentions under subtitle/ (docstrings, method names such
+as 'subprocess_execution' in gates.py/evidence.py/qc.py, "no subprocess"
+statements in state.py/retry.py) are not call sites and create no process.
+
+## Verdict (E-09) — CORRECTED at W0
+
+The previous verdict ("No third renderer entrypoint was found. PASS.") was
+FALSE: it rested on a grep that covered only subtitle/core/ + subtitle/adapters/.
+A whole-tree grep finds a 3rd render entrypoint (section F above) that the
+orchestrator never invokes and no JobGrant guards. E-09 is FAIL until W2
+controls that path. The 2 intended invocation paths in Phase 2 core code
+still exist and still behave as documented: (1) renderer_adapter.execute_renderer
+-> burner subprocess; (2) qc.py probes (ffprobe/ffmpeg, read-only).
