@@ -1,0 +1,9 @@
+command: python subtitle/styles/test_styles.py (run as a script; it is not a unittest module)
+commit: 650bccf9ede4d802ee5ea7a02e097d3669d562bd (branch phase2/p2-010-adversarial-review)
+date: 2026-11-11T08:32:18Z
+host: htch-runtime
+note: an initial 'python -m unittest subtitle.styles.test_styles -v' run found 0 tests (no TestCase in the file) but the module-level checks printed PASS; the script run below is the authoritative one.
+
+T3 thai strip saved: thai_test_strip.png (check by eye: no tofu, vowels attached)
+PASS: T1 position lock, T2 no subtitles filter, T4 style list lock
+exit=0

@@ -1,0 +1,58 @@
+# Subprocess inventory (P2-010, plan section 6.1 row N-03 / threat row E-09)
+# Generated from real greps on branch phase2/p2-010-adversarial-review.
+# Rule: a "renderer entrypoint" is a call site that can start a render.
+# QC probes only read media; they never produce a video.
+
+command: grep -rn "subprocess" subtitle/core/ subtitle/adapters/ --include="*.py"
+date: 2026-11-11 (recorded during the P2-010 evidence run)
+shell=True anywhere under subtitle/: 0 results (grep -rn "shell=True" subtitle/ --include="*.py")
+
+## A. Real subprocess.run call sites in Phase 2 core code (4 sites, all shell=False)
+
+| file:line | call | purpose | shell= |
+|---|---|---|---|
+| subtitle/core/qc.py:340 | subprocess.run(ffprobe ...) | probe candidate media properties (read-only) | shell=False |
+| subtitle/core/qc.py:530 | subprocess.run(ffmpeg loudnorm ...) | measure loudness (read-only) | shell=False |
+| subtitle/core/qc.py:732 | subprocess.run(ffmpeg capture ...) | capture QC frames (read-only) | shell=False |
+| subtitle/core/renderer_adapter.py:318 | subprocess.run(sys.executable + burner script ...) | invoke the legacy burner (viralpop/paper-chips) | shell=False |
+
+## B. The single burner entrypoint (who can start a render)
+
+subtitle/core/orchestrator.py:1201  ->  render_one_clip()  ->  renderer_adapter.execute_renderer()
+                                       ->  subprocess.run:318 (shell=False)
+No other code path in subtitle/core/ or subtitle/adapters/ invokes a burner.
+
+## C. Inside the burners (legacy code, runs INSIDE the burner subprocess above)
+
+These subprocess calls are part of the burner itself, not separate
+entrypoints into the render path. Listed here so the inventory is complete:
+
+| file:line | call | purpose |
+|---|---|---|
+| subtitle/viralpop/render/script_pipeline.py:117 | subprocess.run(...) | ffmpeg burn (inside the burner) |
+| subtitle/viralpop/render/script_burn.py:111 | subprocess.run(...) | ffmpeg burn (inside the burner) |
+| subtitle/viralpop/render/render_subtitles.py:31,48,105 | subprocess.check_output / run | ffprobe/ffmpeg helpers (inside the burner) |
+| subtitle/viralpop/render/stt_guard.py:142 | subprocess.run(...) | guard check (inside the burner) |
+| subtitle/viralpop/render/build_clip.py:47 | subprocess.check_output(...) | ffprobe helper (inside the burner) |
+
+## D. Adapters: no subprocess at all
+
+grep -rn "subprocess" subtitle/adapters/ --include="*.py" -> 0 real call sites
+(the word appears only in docstrings, e.g. colab.py notes about no network).
+
+## E. Known pre-existing direct-CLI path (NOT a new entrypoint)
+
+The burner CLIs (subtitle/viralpop/render/script_pipeline._cli() and
+subtitle/paper-chips/chip_burn.py main()) can be called straight from the
+shell without any grant, verify() or orchestrator. This is pre-existing
+(Spec section 10) and is proved by test_adversarial.py
+test_direct_cli_bypasses_orchestrator (E-02): both CLIs produce a real
+output file when called directly. Recorded as known limitation L2 in
+docs/phase2/review.md. It is NOT a new entrypoint found by P2-010.
+
+## Verdict (E-09)
+
+Exactly the 2 intended invocation paths exist in Phase 2 core code:
+(1) renderer_adapter.execute_renderer -> burner subprocess;
+(2) qc.py probes (ffprobe/ffmpeg, read-only).
+No third renderer entrypoint was found. PASS.

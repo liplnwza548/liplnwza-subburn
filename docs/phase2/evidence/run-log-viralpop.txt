@@ -1,0 +1,318 @@
+command: python -m unittest discover -s subtitle/viralpop/tests -v
+commit: 650bccf9ede4d802ee5ea7a02e097d3669d562bd (branch phase2/p2-010-adversarial-review)
+date: 2026-11-11T08:30:50Z
+host: htch-runtime
+
+test_cross_line_merge_refused_when_disallowed (test_cue_decisions.TestMergeProductionGuards.test_cross_line_merge_refused_when_disallowed) ... ok
+test_merged_cue_keeps_char_span (test_cue_decisions.TestMergeProductionGuards.test_merged_cue_keeps_char_span) ... ok
+test_over_syllable_merge_refused (test_cue_decisions.TestMergeProductionGuards.test_over_syllable_merge_refused) ... ok
+test_design_sentence_plans_two_feasible_cues (test_cue_decisions.TestPlanner.test_design_sentence_plans_two_feasible_cues) ... ok
+test_impossible_slot_returns_verdict_not_cues (test_cue_decisions.TestPlanner.test_impossible_slot_returns_verdict_not_cues) ... ok
+test_plan_cues_chains_char_spans (test_cue_decisions.TestPlanner.test_plan_cues_chains_char_spans) ... ERROR
+test_coverage_passes_on_exact_spans (test_cue_decisions.TestScriptLock.test_coverage_passes_on_exact_spans) ... ERROR
+test_coverage_refuses_dropped_word (test_cue_decisions.TestScriptLock.test_coverage_refuses_dropped_word) ... ERROR
+test_coverage_refuses_missing_span (test_cue_decisions.TestScriptLock.test_coverage_refuses_missing_span) ... ERROR
+test_diff_clean_on_full_stt (test_cue_decisions.TestScriptLock.test_diff_clean_on_full_stt) ... ERROR
+test_diff_finds_missing_sentence (test_cue_decisions.TestScriptLock.test_diff_finds_missing_sentence) ... ERROR
+test_lock_reads_lip_script_with_hash (test_cue_decisions.TestScriptLock.test_lock_reads_lip_script_with_hash) ... ERROR
+test_c6_design_split_is_syllable_proportional (test_cue_decisions.TestSlot.test_c6_design_split_is_syllable_proportional) ... ok
+test_invalid_slot_refuses (test_cue_decisions.TestSlot.test_invalid_slot_refuses) ... ok
+test_centisecond_zero_length_refuses (test_cue_decisions.TestValidation.test_centisecond_zero_length_refuses) ... ok
+test_exception_lets_short_cue_burn (test_cue_decisions.TestValidation.test_exception_lets_short_cue_burn) ... ok
+test_negation_stranded_across_cut_refuses (test_cue_decisions.TestValidation.test_negation_stranded_across_cut_refuses) ... ok
+test_negation_whole_in_one_cue_passes (test_cue_decisions.TestValidation.test_negation_whole_in_one_cue_passes) ... ok
+test_short_cue_without_exception_refuses (test_cue_decisions.TestValidation.test_short_cue_without_exception_refuses) ... ok
+test_trim_shortened_warns_not_refuses (test_cue_decisions.TestValidation.test_trim_shortened_warns_not_refuses) ... ok
+test_unreadable_rate_refuses (test_cue_decisions.TestValidation.test_unreadable_rate_refuses) ... ok
+test_asr_misspelling_never_becomes_display_text (test_primary_bag_demo.TestPrimaryBagDemoAsrSpelling.test_asr_misspelling_never_becomes_display_text) ... ok
+test_klasik_never_orphans_kor_kai (test_primary_bag_demo.TestPrimaryBagDemoKlasikOrphan.test_klasik_never_orphans_kor_kai) ... ok
+test_no_orphan_across_two_line_script (test_primary_bag_demo.TestPrimaryBagDemoKlasikOrphan.test_no_orphan_across_two_line_script) ... ok
+test_mak_attachment_alt_word_chopping (test_primary_bag_demo.TestPrimaryBagDemoMakAttachment.test_mak_attachment_alt_word_chopping) ... ok
+test_mak_stays_with_first_cue (test_primary_bag_demo.TestPrimaryBagDemoMakAttachment.test_mak_stays_with_first_cue) ... ok
+test_pipeline_burns_exact_script_texts (test_primary_bag_demo.TestPrimaryBagDemoSmoke.test_pipeline_burns_exact_script_texts) ... ok
+test_accepts_full_verbose_json_dict (test_script_align.TestMismatches.test_accepts_full_verbose_json_dict) ... ok
+test_empty_timeline_all_mismatch (test_script_align.TestMismatches.test_empty_timeline_all_mismatch) ... ok
+test_unmatched_line_reported_no_invention (test_script_align.TestMismatches.test_unmatched_line_reported_no_invention) ... ok
+test_asr_misspelling_never_becomes_text (test_script_align.TestPrimaryCase.test_asr_misspelling_never_becomes_text) ... ok
+test_long_word_not_split (test_script_align.TestPrimaryCase.test_long_word_not_split) ... ok
+test_mak_stays_on_first_line_text (test_script_align.TestPrimaryCase.test_mak_stays_on_first_line_text) ... ok
+test_primary_case_alt_word_split (test_script_align.TestPrimaryCase.test_primary_case_alt_word_split) ... ok
+test_late_line_zero_warns (test_script_align.TestRepeatLatchWarning.test_late_line_zero_warns) ... ok
+test_normal_order_no_warning (test_script_align.TestRepeatLatchWarning.test_normal_order_no_warning) ... ok
+test_each_dialogue_text_equals_script_line (test_script_ass.TestDialogueEqualsScript.test_each_dialogue_text_equals_script_line) ... ok
+test_forbidden_cross_line_pack_absent (test_script_ass.TestDialogueEqualsScript.test_forbidden_cross_line_pack_absent) ... ok
+test_no_wrap_or_split_markers (test_script_ass.TestDialogueEqualsScript.test_no_wrap_or_split_markers) ... ok
+test_one_dialogue_per_script_line_no_repack (test_script_ass.TestDialogueEqualsScript.test_one_dialogue_per_script_line_no_repack) ... ok
+test_classic_never_splits_to_orphan (test_script_ass.TestNoMidWordSplit.test_classic_never_splits_to_orphan) ... ok
+test_long_line_stays_single_cue (test_script_ass.TestNoMidWordSplit.test_long_line_stays_single_cue) ... ok
+test_asr_misspelling_never_reaches_ass (test_script_ass.TestNoRewrite.test_asr_misspelling_never_reaches_ass) ... ok
+test_module_applies_no_rewrite_helpers (test_script_ass.TestNoRewrite.test_module_applies_no_rewrite_helpers) ... ok
+test_empty_matched_refuses (test_script_ass.TestRefusals.test_empty_matched_refuses) ... ok
+test_mismatched_alignment_refuses_without_file (test_script_ass.TestRefusals.test_mismatched_alignment_refuses_without_file) ... ok
+test_portrait_playres (test_script_ass.TestStyleLock.test_portrait_playres) ... ok
+test_viral_pop_and_prompt_bold (test_script_ass.TestStyleLock.test_viral_pop_and_prompt_bold) ... ok
+test_c2_rebalance_forward (test_script_autorepair.TestBatch2Shapes.test_c2_rebalance_forward) ... ok
+test_c3_hold_back_into_pause (test_script_autorepair.TestBatch2Shapes.test_c3_hold_back_into_pause) ... ok
+test_c3_outro_hold (test_script_autorepair.TestBatch2Shapes.test_c3_outro_hold) ... ok
+test_c4_cross_line_leftover (test_script_autorepair.TestBatch2Shapes.test_c4_cross_line_leftover) ... ok
+test_c4_micro_hold_forward (test_script_autorepair.TestBatch2Shapes.test_c4_micro_hold_forward) ... ok
+test_monotonic_and_text_preserved (test_script_autorepair.TestBatch2Shapes.test_monotonic_and_text_preserved) ... ok
+test_silence_proof_redirects_to_rebalance (test_script_autorepair.TestBatch2Shapes.test_silence_proof_redirects_to_rebalance) ... ok
+test_audio_copy_failure_maps_to_ask_error (test_script_burn.TestAudioCopyTrap.test_audio_copy_failure_maps_to_ask_error) ... ok
+test_no_silent_reencode_flag_anywhere (test_script_burn.TestAudioCopyTrap.test_no_silent_reencode_flag_anywhere) ... ok
+test_filter_has_no_drive_letters_or_separators (test_script_burn.TestFilterTraps.test_filter_has_no_drive_letters_or_separators) ... ok
+test_filter_is_ass_only (test_script_burn.TestFilterTraps.test_filter_is_ass_only) ... ok
+test_subtitles_shape_refused (test_script_burn.TestFilterTraps.test_subtitles_shape_refused) ... ok
+test_burn_needs_no_real_video_when_blocked (test_script_burn.TestGateRefusal.test_burn_needs_no_real_video_when_blocked) ... ok
+test_burn_refuses_when_gate_blocked (test_script_burn.TestGateRefusal.test_burn_refuses_when_gate_blocked) ... ok
+test_burn_preserves_geometry_duration_audio (test_script_burn.TestSyntheticBurnIntegration.test_burn_preserves_geometry_duration_audio) ... ok
+test_blocked_writes_no_ass_file (test_script_gate.TestGateAndAssFiles.test_blocked_writes_no_ass_file) ... ok
+test_clear_gate_allows_ass_file (test_script_gate.TestGateAndAssFiles.test_clear_gate_allows_ass_file) ... ok
+test_malformed_alignment_refuses (test_script_gate.TestGateAndAssFiles.test_malformed_alignment_refuses) ... ok
+test_assert_gate_raises_with_report (test_script_gate.TestGateBlocks.test_assert_gate_raises_with_report) ... ok
+test_nonempty_mismatches_refuse (test_script_gate.TestGateBlocks.test_nonempty_mismatches_refuse) ... ok
+test_report_covers_all_mismatches (test_script_gate.TestGateBlocks.test_report_covers_all_mismatches) ... ok
+test_report_has_time_window_and_heard (test_script_gate.TestGateBlocks.test_report_has_time_window_and_heard) ... ok
+test_check_keyword_hits_counts (test_script_keywords_marks.TestKeywordCoverageGate.test_check_keyword_hits_counts) ... ok
+test_zero_hit_keyword_blocks_burn (test_script_keywords_marks.TestKeywordCoverageGate.test_zero_hit_keyword_blocks_burn) ... ok
+test_clean_split_passes (test_script_keywords_marks.TestR5LoanwordIntegrity.test_clean_split_passes) ... ok
+test_severed_term_refused (test_script_keywords_marks.TestR5LoanwordIntegrity.test_severed_term_refused) ... ok
+test_split_never_severs_registered_variant (test_script_keywords_marks.TestR5LoanwordIntegrity.test_split_never_severs_registered_variant) ... ok
+test_comma_string_refused (test_script_keywords_marks.TestResolveKeywordsGuard.test_comma_string_refused) ... ok
+test_list_passes_through (test_script_keywords_marks.TestResolveKeywordsGuard.test_list_passes_through) ... ok
+test_build_ass_yellow_present_and_absent (test_script_keywords_marks.TestT3Colorize.test_build_ass_yellow_present_and_absent) ... ok
+test_empty_keywords_no_yellow (test_script_keywords_marks.TestT3Colorize.test_empty_keywords_no_yellow) ... ok
+test_load_job_keywords_clip04 (test_script_keywords_marks.TestT3Colorize.test_load_job_keywords_clip04) ... ERROR
+test_longest_term_first (test_script_keywords_marks.TestT3Colorize.test_longest_term_first) ... ok
+test_yellow_survives_t2_split_per_piece (test_script_keywords_marks.TestT3Colorize.test_yellow_survives_t2_split_per_piece) ... ok
+test_yellow_woven_same_size_no_rewrite (test_script_keywords_marks.TestT3Colorize.test_yellow_woven_same_size_no_rewrite) ... ok
+test_base_text_stays_verbatim_with_marks (test_script_keywords_marks.TestT4Overlays.test_base_text_stays_verbatim_with_marks) ... ok
+test_negation_keyword_highlights_whole_phrase (test_script_keywords_marks.TestT4Overlays.test_negation_keyword_highlights_whole_phrase) ... ok
+test_no_layer1_anywhere_with_keywords (test_script_keywords_marks.TestT4Overlays.test_no_layer1_anywhere_with_keywords) ... ok
+test_single_mark_control_is_noop (test_script_keywords_marks.TestT4Overlays.test_single_mark_control_is_noop) ... ok
+test_stacked_cue_emits_no_layer1 (test_script_keywords_marks.TestT4Overlays.test_stacked_cue_emits_no_layer1) ... ok
+test_clip04_keyword_coverage (test_script_keywords_marks.TestT5GeometryLock.test_clip04_keyword_coverage)
+All 8 matchable clip04 keywords render yellow on Layer0. ... ERROR
+test_clip04_script_all_fit_after_split (test_script_keywords_marks.TestT5GeometryLock.test_clip04_script_all_fit_after_split) ... ERROR
+test_content_qa_overlay_count_on_stacked_fixture (test_script_keywords_marks.TestT5GeometryLock.test_content_qa_overlay_count_on_stacked_fixture) ... ok
+test_locked_values (test_script_keywords_marks.TestT5GeometryLock.test_locked_values) ... ok
+test_overlap_severe_still_refused (test_script_keywords_marks.TestT5GeometryLock.test_overlap_severe_still_refused) ... ok
+test_overlap_trimmable_then_builds (test_script_keywords_marks.TestT5GeometryLock.test_overlap_trimmable_then_builds) ... ok
+test_style_line_carries_lock (test_script_keywords_marks.TestT5GeometryLock.test_style_line_carries_lock) ... ok
+test_zero_duration_refused (test_script_keywords_marks.TestT5GeometryLock.test_zero_duration_refused) ... ok
+test_backward_merge_refused_over_syllable_cap (test_script_timing.MergeShortCuesTest.test_backward_merge_refused_over_syllable_cap) ... ok
+test_cross_line_merge_refused_by_default (test_script_timing.MergeShortCuesTest.test_cross_line_merge_refused_by_default) ... ok
+test_floor_value (test_script_timing.MergeShortCuesTest.test_floor_value) ... ok
+test_legacy_cross_line_opt_in (test_script_timing.MergeShortCuesTest.test_legacy_cross_line_opt_in) ... ok
+test_ok_cues_untouched (test_script_timing.MergeShortCuesTest.test_ok_cues_untouched) ... ok
+test_over_width_merge_skipped (test_script_timing.MergeShortCuesTest.test_over_width_merge_skipped) ... ok
+test_short_last_cue_folds_backward (test_script_timing.MergeShortCuesTest.test_short_last_cue_folds_backward) ... ok
+test_short_last_cue_refused_by_default (test_script_timing.MergeShortCuesTest.test_short_last_cue_refused_by_default) ... ok
+test_backward_hold_into_speech_refused (test_script_timing.TestSpeechOverrun.test_backward_hold_into_speech_refused) ... ok
+test_cues_without_line_index_skipped (test_script_timing.TestSpeechOverrun.test_cues_without_line_index_skipped) ... ok
+test_forward_hold_into_speech_refused (test_script_timing.TestSpeechOverrun.test_forward_hold_into_speech_refused) ... ok
+test_hold_inside_silence_passes (test_script_timing.TestSpeechOverrun.test_hold_inside_silence_passes) ... ok
+test_internal_rebalance_passes (test_script_timing.TestSpeechOverrun.test_internal_rebalance_passes) ... ok
+test_chain_of_overlaps (test_script_timing.TrimOverlapsTest.test_chain_of_overlaps) ... ok
+test_empty_and_singleton (test_script_timing.TrimOverlapsTest.test_empty_and_singleton) ... ok
+test_input_not_mutated (test_script_timing.TrimOverlapsTest.test_input_not_mutated) ... ok
+test_min_duration_floor (test_script_timing.TrimOverlapsTest.test_min_duration_floor) ... ok
+test_no_overlap_untouched (test_script_timing.TrimOverlapsTest.test_no_overlap_untouched) ... ok
+test_reports_every_bad_pair (test_script_timing.TrimOverlapsTest.test_reports_every_bad_pair) ... ok
+test_severe_overlap_raises (test_script_timing.TrimOverlapsTest.test_severe_overlap_raises) ... ok
+test_trims_end_only (test_script_timing.TrimOverlapsTest.test_trims_end_only) ... ok
+test_zero_duration_raises (test_script_timing.TrimOverlapsTest.test_zero_duration_raises) ... ok
+test_c6_line_fails_loud_without_dictionary (test_script_width_split.TestC6NoDictFallback.test_c6_line_fails_loud_without_dictionary) ... ok
+test_space_grid_still_splits_when_halves_fit (test_script_width_split.TestC6NoDictFallback.test_space_grid_still_splits_when_halves_fit) ... ok
+test_spaceless_overflow_fails_loud_instead_of_guessing (test_script_width_split.TestC6NoDictFallback.test_spaceless_overflow_fails_loud_instead_of_guessing) ... ok
+test_split_matched_reports_overflow_error_not_silent_sever (test_script_width_split.TestC6NoDictFallback.test_split_matched_reports_overflow_error_not_silent_sever) ... ok
+test_budget_formula (test_script_width_split.TestT1Budget.test_budget_formula) ... ok
+test_geometry_matches_ass (test_script_width_split.TestT1Budget.test_geometry_matches_ass) ... ok
+test_build_ass_refuses_over_budget_before_write (test_script_width_split.TestT1Gate.test_build_ass_refuses_over_budget_before_write) ... ok
+test_long_line_trips_gate_fail_loud (test_script_width_split.TestT1Gate.test_long_line_trips_gate_fail_loud) ... ok
+test_report_lists_per_line_px (test_script_width_split.TestT1Gate.test_report_lists_per_line_px) ... ok
+test_short_primary_lines_fit (test_script_width_split.TestT1Gate.test_short_primary_lines_fit) ... ok
+test_every_sub_cue_fits_budget (test_script_width_split.TestT2Split.test_every_sub_cue_fits_budget) ... ok
+test_long_line_splits_and_concat_is_exact (test_script_width_split.TestT2Split.test_long_line_splits_and_concat_is_exact) ... ok
+test_no_cross_line_moves (test_script_width_split.TestT2Split.test_no_cross_line_moves) ... ok
+test_primary_bag_lines_stay_single_cue (test_script_width_split.TestT2Split.test_primary_bag_lines_stay_single_cue) ... ok
+test_split_entries_carry_parent_bookkeeping (test_script_width_split.TestT2Split.test_split_entries_carry_parent_bookkeeping) ... ok
+test_split_output_burns_one_dialogue_per_sub_cue (test_script_width_split.TestT2Split.test_split_output_burns_one_dialogue_per_sub_cue) ... ok
+test_split_points_are_word_safe (test_script_width_split.TestT2Split.test_split_points_are_word_safe) ... ok
+test_timings_monotonic_inside_parent_span_no_zero_duration (test_script_width_split.TestT2Split.test_timings_monotonic_inside_parent_span_no_zero_duration) ... ok
+test_c4_collapsed_segment_detected (test_stt_guard.TestFindSuspects.test_c4_collapsed_segment_detected) ... ok
+test_clean_clip_has_no_suspects (test_stt_guard.TestFindSuspects.test_clean_clip_has_no_suspects) ... ok
+test_empty_long_segment_flagged (test_stt_guard.TestFindSuspects.test_empty_long_segment_flagged) ... ok
+test_bad_range_retried_and_merged (test_stt_guard.TestGuardedFlow.test_bad_range_retried_and_merged) ... ok
+test_still_bad_chunk_keeps_original (test_stt_guard.TestGuardedFlow.test_still_bad_chunk_keeps_original) ... ok
+test_c4_merge_offsets (test_stt_guard.TestMergeChunk.test_c4_merge_offsets) ... ok
+
+======================================================================
+ERROR: test_plan_cues_chains_char_spans (test_cue_decisions.TestPlanner.test_plan_cues_chains_char_spans)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/hatch/workspace/liplnwza-subburn-repo/subtitle/viralpop/tests/test_cue_decisions.py", line 141, in test_plan_cues_chains_char_spans
+    lock = lock_script(SCRIPT)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/home/hatch/workspace/liplnwza-subburn-repo/subtitle/viralpop/render/script_lock.py", line 37, in lock_script
+    for ln in p.read_text(encoding="utf-8").splitlines()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/pathlib.py", line 1029, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/pathlib.py", line 1015, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/home/box/subtitle-work/clips/batch6/script/c6.approved.txt'
+
+======================================================================
+ERROR: test_coverage_passes_on_exact_spans (test_cue_decisions.TestScriptLock.test_coverage_passes_on_exact_spans)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/hatch/workspace/liplnwza-subburn-repo/subtitle/viralpop/tests/test_cue_decisions.py", line 69, in test_coverage_passes_on_exact_spans
+    lock = lock_script(SCRIPT)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/home/hatch/workspace/liplnwza-subburn-repo/subtitle/viralpop/render/script_lock.py", line 37, in lock_script
+    for ln in p.read_text(encoding="utf-8").splitlines()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/pathlib.py", line 1029, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/pathlib.py", line 1015, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/home/box/subtitle-work/clips/batch6/script/c6.approved.txt'
+
+======================================================================
+ERROR: test_coverage_refuses_dropped_word (test_cue_decisions.TestScriptLock.test_coverage_refuses_dropped_word)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/hatch/workspace/liplnwza-subburn-repo/subtitle/viralpop/tests/test_cue_decisions.py", line 81, in test_coverage_refuses_dropped_word
+    lock = lock_script(SCRIPT)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/home/hatch/workspace/liplnwza-subburn-repo/subtitle/viralpop/render/script_lock.py", line 37, in lock_script
+    for ln in p.read_text(encoding="utf-8").splitlines()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/pathlib.py", line 1029, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/pathlib.py", line 1015, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/home/box/subtitle-work/clips/batch6/script/c6.approved.txt'
+
+======================================================================
+ERROR: test_coverage_refuses_missing_span (test_cue_decisions.TestScriptLock.test_coverage_refuses_missing_span)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/hatch/workspace/liplnwza-subburn-repo/subtitle/viralpop/tests/test_cue_decisions.py", line 94, in test_coverage_refuses_missing_span
+    lock = lock_script(SCRIPT)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/home/hatch/workspace/liplnwza-subburn-repo/subtitle/viralpop/render/script_lock.py", line 37, in lock_script
+    for ln in p.read_text(encoding="utf-8").splitlines()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/pathlib.py", line 1029, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/pathlib.py", line 1015, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/home/box/subtitle-work/clips/batch6/script/c6.approved.txt'
+
+======================================================================
+ERROR: test_diff_clean_on_full_stt (test_cue_decisions.TestScriptLock.test_diff_clean_on_full_stt)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/hatch/workspace/liplnwza-subburn-repo/subtitle/viralpop/tests/test_cue_decisions.py", line 63, in test_diff_clean_on_full_stt
+    lock = lock_script(SCRIPT)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/home/hatch/workspace/liplnwza-subburn-repo/subtitle/viralpop/render/script_lock.py", line 37, in lock_script
+    for ln in p.read_text(encoding="utf-8").splitlines()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/pathlib.py", line 1029, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/pathlib.py", line 1015, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/home/box/subtitle-work/clips/batch6/script/c6.approved.txt'
+
+======================================================================
+ERROR: test_diff_finds_missing_sentence (test_cue_decisions.TestScriptLock.test_diff_finds_missing_sentence)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/hatch/workspace/liplnwza-subburn-repo/subtitle/viralpop/tests/test_cue_decisions.py", line 54, in test_diff_finds_missing_sentence
+    lock = lock_script(SCRIPT)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/home/hatch/workspace/liplnwza-subburn-repo/subtitle/viralpop/render/script_lock.py", line 37, in lock_script
+    for ln in p.read_text(encoding="utf-8").splitlines()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/pathlib.py", line 1029, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/pathlib.py", line 1015, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/home/box/subtitle-work/clips/batch6/script/c6.approved.txt'
+
+======================================================================
+ERROR: test_lock_reads_lip_script_with_hash (test_cue_decisions.TestScriptLock.test_lock_reads_lip_script_with_hash)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/hatch/workspace/liplnwza-subburn-repo/subtitle/viralpop/tests/test_cue_decisions.py", line 47, in test_lock_reads_lip_script_with_hash
+    lock = lock_script(SCRIPT)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/home/hatch/workspace/liplnwza-subburn-repo/subtitle/viralpop/render/script_lock.py", line 37, in lock_script
+    for ln in p.read_text(encoding="utf-8").splitlines()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/pathlib.py", line 1029, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/pathlib.py", line 1015, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/home/box/subtitle-work/clips/batch6/script/c6.approved.txt'
+
+======================================================================
+ERROR: test_load_job_keywords_clip04 (test_script_keywords_marks.TestT3Colorize.test_load_job_keywords_clip04)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/hatch/workspace/liplnwza-subburn-repo/subtitle/viralpop/tests/test_script_keywords_marks.py", line 105, in test_load_job_keywords_clip04
+    kws = load_keywords_job(JOB_CLIP04)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hatch/workspace/liplnwza-subburn-repo/subtitle/viralpop/render/script_keywords.py", line 46, in load_keywords_job
+    raise FileNotFoundError(f"job file not found: {path}")
+FileNotFoundError: job file not found: /home/box/subtitle-work/jobs/clip04.json
+
+======================================================================
+ERROR: test_clip04_keyword_coverage (test_script_keywords_marks.TestT5GeometryLock.test_clip04_keyword_coverage)
+All 8 matchable clip04 keywords render yellow on Layer0.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/hatch/workspace/liplnwza-subburn-repo/subtitle/viralpop/tests/test_script_keywords_marks.py", line 310, in test_clip04_keyword_coverage
+    kws = load_keywords_job(JOB_CLIP04)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hatch/workspace/liplnwza-subburn-repo/subtitle/viralpop/render/script_keywords.py", line 46, in load_keywords_job
+    raise FileNotFoundError(f"job file not found: {path}")
+FileNotFoundError: job file not found: /home/box/subtitle-work/jobs/clip04.json
+
+======================================================================
+ERROR: test_clip04_script_all_fit_after_split (test_script_keywords_marks.TestT5GeometryLock.test_clip04_script_all_fit_after_split)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/hatch/workspace/liplnwza-subburn-repo/subtitle/viralpop/tests/test_script_keywords_marks.py", line 231, in test_clip04_script_all_fit_after_split
+    ).read_text(encoding="utf-8").splitlines()
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/pathlib.py", line 1029, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/pathlib.py", line 1015, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/home/box/subtitle-work/scripts/batch01_v1/clip04.txt'
+
+----------------------------------------------------------------------
+Ran 142 tests in 22.842s
+
+FAILED (errors=10)
+CUE_WARN: cue 0 ('สวยแพงมาก'): 0.49s under 0.6s after audio-driven trim — flagged for Lip review

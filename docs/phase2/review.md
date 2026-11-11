@@ -1,0 +1,389 @@
+# Phase 2 Offline Review — GO/NO-GO Decision
+
+> **คำตัดสินเบื้องต้น: GO แบบมีเงื่อนไข (GO with conditions)**
+>
+> **สำหรับขอบเขต Phase 2 offline เท่านั้น — ไม่ใช่ "พร้อม production"**
+>
+> P0 = 0 ข้อ, P1 = 2 ข้อ (มี mitigation เป็นลายลักษณ์อักษร + เจ้าของ + กำหนด
+> ครบทั้ง 2 ข้อ — ดูหัวข้อ 9), P2 = 3 ข้อ
+>
+> **คำตัดสินนี้เป็น "เบื้องต้น" เท่านั้น** — งานตรวจอิสระ 2 แกน (Codex + AGY)
+> ยังไม่ได้เริ่ม (หัวข้อ 13 ยังไม่มีลายเซ็น) คำตัดสินสุดท้ายต้องหลังงานตรวจ
+> 2 แกนเสร็จ และฟิลิปเป็นคนตัดสิน merge แยกต่างหาก
+
+## 1. สรุปคำตัดสิน
+
+| รายการ | ค่า |
+|---|---|
+| คำตัดสิน (เบื้องต้น) | **GO แบบมีเงื่อนไข** — "Phase 2 offline milestone ผ่าน" ได้ ต่อเมื่อเงื่อนไขในหัวข้อ 9 ครบ |
+| วันที่ตรวจ | 2026-11-11 |
+| Commit ที่ตรวจ | head ของ branch `phase2/p2-010-adversarial-review` (base `origin/main 650bccf`) — SHA ตรงของ head ดูที่ Draft PR (หัวข้อนี้เขียนก่อนสร้าง PR จึงอ้าง branch แทน SHA) |
+| ผู้ตรวจอิสระ แกน 1 (repo standards / security) | **ยังไม่ตรวจ** — เสนอ Codex (หลังรีเซ็ต 18:00 วันนี้) |
+| ผู้ตรวจอิสระ แกน 2 (spec compliance) | **ยังไม่ตรวจ** — เสนอ AGY (หลังรีเซ็ต ~14 พ.ย. 11:15 น. — สถานะโควต้ายังไม่ยืนยัน) |
+| เกณฑ์ที่ใช้ | D3 ที่ฟิลิปอนุมัติ: NO-GO ถ้า P0 ≥ 1 หรือ P1 ≥ 3; GO แบบมีเงื่อนไขถ้า P0 = 0 และ P1 ≤ 2 พร้อม mitigation เป็นลายลักษณ์อักษร |
+
+**ทำไมถึง GO แบบมีเงื่อนไข ไม่ใช่ GO เต็ม:** มี P1 อยู่ 2 ข้อที่ต้องมี
+mitigation ก่อนประกาศผ่าน (ดูหัวข้อ 9) และงานตรวจอิสระ 2 แกนยังไม่เสร็จ
+(S-09 ใน `evidence/non-regression.md` ยังเป็น PENDING) — ถ้างานตรวจอิสระ
+เจอ P0 เพิ่ม หรือ P1 เพิ่มจนรวมเป็น 3 ข้อ คำตัดสินจะพลิกเป็น NO-GO ทันที
+
+**ทำไมถึงไม่ใช่ NO-GO:** ตรวจแล้วไม่เจอ P0 เลย — ไม่มีงานที่ไม่ปลอดภัยเดินต่อได้
+ไม่มีนโยบายถูก bypass ไม่มีหลักฐานถูกปลอมแล้วผ่าน ไม่มี secret/media ถูก commit
+ชุดทดสอบเต็มผ่าน 195/195 ข้อ ตารางภัยคุกคาม 77 แถวผ่านทั้งหมด
+
+## 2. ขอบเขตที่ตรวจ (Phase 2 offline เท่านั้น — ไม่ใช่ production)
+
+ตรวจโค้ดบน main `650bccf` (P2-002–P2-009 ที่ merge แล้วทั้งหมด) บวกไฟล์ใหม่
+ของ P2-010 (`tests/phase2/test_adversarial.py` + `docs/phase2/`) บน branch
+`phase2/p2-010-adversarial-review`
+
+**สิ่งที่ตรวจ:** ตารางภัยคุกคาม end-to-end แบบ offline (77 แถว), ชุดทดสอบเต็ม,
+การไม่ถดถอยของระบบเดิม (Spec 11 ข้อ S-01–S-09), entrypoint เรนเดอร์,
+สุขอนามัย repo (secret/media/`/tmp`/SQLite/STT timing/notebook)
+
+**สิ่งที่ไม่ใช่ขอบเขตของงานนี้:** การประกาศพร้อม production, การเปิด auto mode,
+การต่อ Drive จริง, การรันบน Colab จริง, การฟังเสียง/ดูภาพโดยคนจริง —
+ทั้งหมดอยู่ในรายการ NOT_RUN (หัวข้อ 8) และเกณฑ์ promotion (หัวข้อ 12)
+
+## 3. ผลรวม
+
+| ตัวนับ | จำนวน |
+|---|---|
+| แถวตารางภัยคุกคามทั้งหมด | 77 แถว (A 20, B 14, C 18, D 12, E 13) |
+| แถวที่ PASS | 77 แถว |
+| แถวที่ FAIL | 0 แถว |
+| แถวที่ NOT_RUN | 0 แถว |
+| P0 blocker ที่เจอ | **0 ข้อ** |
+| P1 blocker ที่เจอ | **2 ข้อ** (E-02 + G1 — ดูหัวข้อ 9) |
+| P2 observation | **3 ข้อ** (O-01 + O-02 + G2 — ดูหัวข้อ 10) |
+
+- แยกตามหลักฐาน: มีเทสต์อยู่แล้ว (รันซ้ำ) 64 แถว / เทสต์ใหม่ 7 แถว /
+  ตรวจด้วยมือ (grep/git) 6 แถว = 77 แถว (ตรงกับแผนที่แก้แล้ว C4)
+- ตารางฉบับเต็มแบบเครื่องอ่านได้: `evidence/threat-matrix.csv`
+  (ทุกแถวมีผลรันจริง + ชื่อเทสต์/คำสั่งที่ใช้พิสูจน์ — ไม่มีแถวไหนกรอก PASS
+  ก่อนรัน)
+
+**คำนิยามระดับ (lock ตามแผน §4.8):** P0 = งานไม่ปลอดภัยเดินต่อได้ /
+นโยบายถูก bypass / หลักฐานถูกปลอมแล้วผ่าน / secret หรือสื่อส่วนตัวถูก commit —
+เจอ 1 ข้อก็ NO-GO ทันที; P1 = การป้องกันหายหรือทำงานผิด แต่ยังไม่พิสูจน์ว่า
+มีทางไม่ปลอดภัย — รวมกัน ≥3 ข้อถึง NO-GO; P2 = ข้อสังเกต (เอกสาร/ความทนทาน)
+— ไม่บล็อก แต่ต้องเขียนรายการไว้ครบทุกข้อ
+
+## 4. ผลรันชุดทดสอบเต็ม
+
+รันบน branch P2-010 (base `650bccf` + ไฟล์ใหม่ที่อยู่ใน commit สุดท้ายของ
+branch นี้ — เนื้อหาโค้ด+เทสต์ตอนรันตรงกับเนื้อหาใน commit สุดท้ายทุกไฟล์
+ยกเว้นตัวเอกสารเอง; header ใน log แต่ละไฟล์บอก commit ตอนที่รันไว้ตรงๆ)
+
+| ชุดทดสอบ | คำสั่งที่ใช้ | จำนวนข้อ | ผ่าน | ไม่ผ่าน | ข้าม | log |
+|---|---|---|---|---|---|---|
+| Phase 2 ทั้งหมด | `python -m unittest discover -s tests/phase2 -p 'test_*.py' -v` | 189 | 189 | 0 | 0 | `run-log-phase2.txt` |
+| Foundation | `python -m unittest discover -s tests -p 'test_offline_foundation.py' -v` | 6 | 6 | 0 | 0 | `run-log-foundation.txt` |
+| **รวม Phase 2 + Foundation** | **2 คำสั่งข้างบน** | **195** | **195** | **0** | **0** | — |
+| viralpop ที่เลือก (baseline ครั้งแรก) | `python -m unittest discover -s subtitle/viralpop/tests -v` | 142 | 132 | 0 (fail) / **10 error** | 0 | `run-log-viralpop.txt` |
+| style tests (baseline ครั้งแรก) | `python subtitle/styles/test_styles.py` (รันเป็นสคริปต์ — ไฟล์นี้ไม่มี unittest TestCase) | 4 เช็ค (T1–T4) | 4 | 0 | 0 | `run-log-styles.txt` |
+
+**เรื่อง viralpop 10 error — ไม่ใช่ regression:** ทั้ง 10 error เป็น
+`FileNotFoundError` ของไฟล์ fixture นอก repo 3 ไฟล์ (`/home/box/subtitle-work/
+clips/batch6/script/c6.approved.txt` 7 ข้อ, `.../jobs/clip04.json` 2 ข้อ,
+`.../scripts/batch01_v1/clip04.txt` 1 ข้อ) — ไฟล์พวกนี้ไม่มีอยู่บน VM นี้มาแต่แรก
+เป็นเงื่อนไขเดิมที่รู้จักตั้งแต่ baseline ของ P2-002 ไม่เกี่ยวกับโค้ด Phase 2
+และไม่มี fail (assertion ไม่ผ่าน) เลยแม้แต่ข้อเดียว
+
+**เรื่องตัวเลข viralpop ต่างจาก baseline เก่า (O-02):** baseline ของ P2-002
+ที่ Codex วัดไว้คือ 118 ผ่าน / 3 fail / 21 error ส่วนรอบนี้วัดได้ 132 ผ่าน /
+0 fail / 10 error (รวม 142 ข้อเท่ากัน) — ต่างกันเพราะรันด้วยคำสั่งและสภาพแวดล้อม
+คนละแบบ (หลัง P2-002 มีการติดตั้ง fonttools และ uharfbuzz 0.57.0 เพิ่ม)
+3 fail เก่าไม่เกิดขึ้นซ้ำในการรันรอบนี้ บันทึกไว้เป็นข้อสังเกต P2 (O-02)
+ให้ผู้ตรวจอิสระแกน 1 ตรวจซ้ำ — ไม่ใช่ regression ที่ P2-010 เจอ
+
+**เรื่อง style tests:** สคริปต์ `test_styles.py` รันแล้ว exit 0 — T1 position lock
+ผ่าน, T2 (ไม่มี ffmpeg subtitles filter ใน burner) ผ่าน, T4 (รายชื่อ 13 styles)
+ผ่าน, T3 เรนเดอร์แถบทดสอบภาษาไทยแล้วบันทึกเป็น `subtitle/styles/
+thai_test_strip.png` — ไฟล์นี้เป็นไฟล์ที่ track อยู่แล้ว และผลเรนเดอร์รอบนี้
+ได้เนื้อหา byte-identical กับไฟล์เดิม (`git diff` ว่างเปล่า) จึงไม่มีการแก้
+reference asset ใดๆ
+
+**กับดัก false-pass ของคำสั่งตามตั๋ว (สำคัญ):** คำสั่งที่ตั๋วเขียนไว้
+`python -m unittest discover -s tests -v` ถ้ารันตามตัวอักษรจะรันแค่ 6 เทสต์
+Foundation แล้วขึ้น OK ทั้งที่ phase2 189 ข้อไม่ถูกรันเลย (เพราะไม่มี
+`__init__.py` ใน `tests/` และ `tests/phase2/`) — บีนตรวจพบตอนตรวจแผน
+และรันยืนยันซ้ำใน P2-010 แล้ว (`Ran 6 tests ... OK`) ชุดเต็มจึงต้องรันด้วย
+2 คำสั่งตามตารางข้างบนเท่านั้น (แผน §8.1 บรรทัด T-01 ยังเขียนคำสั่งเดียวไว้ —
+เป็นข้อผิดในแผนที่ P2-010 ไม่ได้ทำตาม แล้วจดไว้ตรงนี้แทน)
+
+## 5. สรุป non-regression (Spec 11)
+
+ติ๊กรายข้อใน `evidence/non-regression.md` — สรุปสั้นๆ ตรงนี้:
+
+| # | Spec 11 ข้อ | ผล |
+|---|---|---|
+| S-01 | legacy approval + tests ยังอยู่ครบ; unattended mode ยัง OFF โดย default | PASS |
+| S-02 | grant ผิดทุกแบบถูกปฏิเสธ **ก่อน** ประมวลผลภายนอกหรือเรนเดอร์ | PASS |
+| S-03 | ไม่มี MFA provenance จริง = ไปไม่ถึง RENDER_PERMITTED; STT timestamp ไม่เคยแทน MFA ได้ | PASS |
+| S-04 | เปลี่ยน transcript/source/style/MFA/grant แล้วหลักฐานที่พึ่งพามันต้องใช้ไม่ได้; ข้ามสถานะถูกปฏิเสธ | PASS |
+| S-05 | READY_FOR_REVIEW ต้องมี QC record ที่วัดจริง; ไม่ได้ฟัง/ดู = NOT_CHECKED ไม่ใช่ PASSED | PASS |
+| S-06 | retry เพิ่มเติมสูงสุด 2 ครั้ง; ทุก attempt ตรวจได้; revoked/unsafe/ambiguous ห้าม retry | PASS |
+| S-07 | source ไม่ถูกเขียนทับ; ไม่แชร์/เผยแพร่/ส่งออกนอกปลายทางที่อนุมัติ | PASS |
+| S-08 | เทสต์ synthetic offline แสดง reject + happy path; regression เก่ายังผ่าน; รายการ NOT_RUN ครบ | PASS |
+| S-09 | review อิสระแยก 2 แกน; ไม่ merge main จนกว่าฟิลิปจะอนุมัติ + ตรวจหลักฐาน | **PENDING** |
+
+8 จาก 9 ข้อ PASS, S-09 ยัง PENDING (งานตรวจอิสระยังไม่เริ่ม) — นี่คือเงื่อนไข
+ข้อหนึ่งของ GO แบบมีเงื่อนไขในหัวข้อ 1
+
+## 6. Entry-point inventory (จุดเรียก subprocess ทั้งหมด)
+
+หลักฐานเต็ม: `evidence/subprocess-inventory.txt`
+
+**ทางที่ตั้งใจมีแค่ 2 ทาง (ในโค้ด Phase 2):**
+
+1. `subtitle/core/renderer_adapter.py:318` — `subprocess.run(sys.executable
+   + burner script, shell=False)` เรียก burner (viralpop/paper-chips)
+   ทางเดียวที่เริ่มเรนเดอร์ได้คือ
+   `orchestrator.py:1201 → render_one_clip() → execute_renderer() →
+   subprocess.run:318`
+2. `subtitle/core/qc.py:340 / :530 / :732` — probes ด้วย ffprobe / ffmpeg
+   loudnorm / ffmpeg capture frames (อ่านอย่างเดียว ไม่สร้างวิดีโอ)
+
+- `shell=True` ใต้ `subtitle/` = **0 ผล**
+- Adapters (`subtitle/adapters/`) เรียก subprocess **0 จุด**
+- ไม่มี entrypoint เรนเดอร์ใหม่ที่ไม่ตั้งใจโผล่มาใน P2-010 (E-09 PASS)
+
+**ทางที่มีอยู่ก่อนแล้ว (ไม่ใช่ทางใหม่ — เป็นที่รู้กัน):** burner CLI
+(`script_pipeline._cli()` และ `chip_burn.py main()`) เรียกตรงจาก shell ได้
+โดยไม่ต้องมี grant ไม่ต้องผ่าน orchestrator — พิสูจน์แล้วด้วยเทสต์ใหม่
+`test_direct_cli_bypasses_orchestrator` (E-02): CLI ทั้งสองตัวสร้างไฟล์ output
+จริงเมื่อเรียกตรงๆ นี่คือข้อจำกัด L2 ในหัวข้อ 7 ไม่ใช่บั๊กที่ P2-010 เจอ
+
+**ข้างในตัว burner เอง** (legacy code) มีการเรียก ffmpeg อยู่แล้ว
+(`script_pipeline.py:117`, `script_burn.py:111`, `render_subtitles.py:31/48/105`,
+`stt_guard.py:142`, `build_clip.py:47`) — ทั้งหมดรันอยู่ **ข้างใน** subprocess
+ของ burner (ทางที่ 1) ไม่ใช่ entrypoint แยก
+
+## 7. ข้อจำกัดของ isolation ใน process เดียวกัน (เขียนตามจริง — ห้ามอ้างเกิน)
+
+> **ข้อจำกัดที่ต้องรู้ (Spec §10):** "Phase 2 offline tests prove policy
+> behavior at the software interface, not that an autonomous agent with
+> arbitrary shell access is unable to bypass it. Unattended production
+> requires a real trust boundary and least-privilege runner."
+>
+> แปลแบบง่ายๆ: เทสต์ทั้งหมดใน P2-010 พิสูจน์ว่า **"ถ้าเรียกผ่านทางที่กำหนด
+> ระบบจะปฏิเสธงานที่ไม่ปลอดภัย"** แต่ไม่ได้พิสูจน์ว่า **"agent ที่มีสิทธิ์
+> shell เต็มรูปแบบจะ bypass ไม่ได้"** — เพราะ agent ที่มีสิทธิ์เต็มสามารถ
+> เรียก ffmpeg/CLI ตรงๆ ได้อยู่ดี (แถว E-02) การป้องกันจริงต้องมีขอบเขตสิทธิ์
+> ที่ OS/container (least-privilege execution) ซึ่งยังไม่มีใน Phase 2
+
+| # | ข้อจำกัด | ทำยังไงต่อ (เจ้าของ: ฟิลิปสั่งแยกหลัง Phase 2) |
+|---|---|---|
+| L1 | Audit log เป็น JSON ธรรมดาที่ agent เขียนได้ — ไม่กันปลอม (not tamper-proof) | ต้องการ trusted audit writer / append-only / hash-chain (Spec §10) |
+| L2 | Direct CLI bypass ได้ (E-02) — agent ที่มี shell เรียก burner ตรงได้ | ต้องการ least-privilege runner / OS/container confinement — เป็น P1 ในหัวข้อ 9 |
+| L3 | Grant issuer ยังเป็น test key — ไม่มี trusted owner-side issuer จริง | ต้องการ issuer ฝั่งเจ้าของ + private key นอก workspace (Spec §13 R1) |
+| L4 | MFA/Groq/Drive ยังไม่เคยทดสอบแบบ live จริง | ต้องการ live tests แยก (อยู่ในรายการ NOT_RUN) |
+| L5 | ไม่มีการฟังเสียง/ดูภาพโดยคนจริง — human checks เป็น `NOT_CHECKED` เสมอ | ต้องการ human inspection บนคลิปตัวแทน (อยู่ในรายการ NOT_RUN) |
+| L6 | `main` ไม่ได้ branch-protect (Spec §13 R5) — เป็นงาน GitHub config แยก ไม่ได้รับอนุมัติใน Phase 2 | ฟิลิปสั่งแยก (PR + review/checks) |
+| L7 | ตัวตรวจ "ซ้ำทุกคลิป" ยังไม่มี (G2) | ตั๋วหลัง Phase 2 (multi-clip runner) — ดูหัวข้อ 10 |
+| L8 | chip_burn ทิ้ง temp สะสม (G1) | แผนแก้ในหัวข้อ 11 + อนุมัติแยก (§10 D4) — เป็น P1 ในหัวข้อ 9 |
+
+## 8. รายการ NOT_RUN — สิ่งที่ไม่ได้ตรวจ (ห้ามซ่อน)
+
+| # | สิ่งที่ไม่ได้ตรวจ (NOT_RUN) | ทำไมไม่ได้ตรวจ | ใครทำต่อ / เมื่อไหร่ |
+|---|---|---|---|
+| NR-01 | Live MFA จริง (รัน `thai_mfa` กับเสียงจริง) | Phase 2A ใช้ synthetic stub / artifact จาก caller เท่านั้น (D-V) | ตั๋วหลัง Phase 2 — ต้องมีเสียงจริง + MFA binary |
+| NR-02 | Live Groq STT จริง | STT ใช้แค่ตรวจ sync ไม่ใช่ timing; ไม่มี live test ใน Phase 2 | ตั๋วหลัง Phase 2 |
+| NR-03 | Live Google Drive delivery จริง | Colab = fake Drive จำลองเท่านั้น (A7) | ตั๋วหลัง Phase 2 — ต้องมี credential จริง + สิทธิ์ที่ตรวจสอบแล้ว |
+| NR-04 | รันบน Colab จริง | P2-009 D2 เลือก Local VM เท่านั้น | ฟิลิปสั่งแยกหลัง P2-010 |
+| NR-05 | คนฟังเสียงจริง (human listening) | ไม่มีคนฟังใน Phase 2A — human checks เป็น `NOT_CHECKED` เสมอ | ฟิลิป/คนตรวจฟังคลิปตัวแทนหลัง Phase 2 |
+| NR-06 | คนดูภาพจริง (human visual inspection) | เช่นเดียวกับ NR-05 | ฟิลิป/คนตรวจดูคลิปตัวแทนหลัง Phase 2 |
+| NR-07 | ตรวจ visual/audio sync ด้วยหู/ตาคนจริง | เฟรม QC ตรวจ sync ไม่ได้ (กฎ notebook cell 30) — ต้องฟังไฟล์เบิร์นเทียบไฟล์เวลา | คนตรวจหลัง Phase 2 |
+| NR-08 | ตรวจบนคลิปยาว (>60 วิ) / คลิปจริงของฟิลิป | ทดสอบด้วยคลิปสังเคราะห์ ≤60 วิเท่านั้น | ตั๋วหลัง Phase 2 |
+| NR-09 | ทดสอบ 13 styles ที่เหลือ | อยู่นอก active path (Phase2_Tickets) | ไม่ใช่ Phase 2 — ตั๋วแยกถ้ามี |
+| NR-10 | ทดสอบ multi-clip / sequential clips | Phase 2A เป็น single-clip scope | ตั๋วหลัง Phase 2 (multi-clip runner) |
+| NR-11 | ทดสอบบนเครื่องอื่น / OS อื่น | ทดสอบบน VM นี้เท่านั้น | ตั๋วหลัง Phase 2 |
+| NR-12 | ตรวจด้วยหู/ตาว่าคลิป "ดูดี" (aesthetic) | QC วัดได้แค่ค่าทางเทคนิค (dimension/duration/LUFS/TP) — ความสวยเป็นเรื่องคนตัดสิน | ฟิลิปตัดสินคลิปตัวแทน |
+
+## 9. Blocker list (P0/P1 ทุกข้อ + mitigation + เจ้าของ + กำหนด)
+
+**P0: ไม่มี** — เขียนไว้ตรงนี้ชัดๆ ว่าไม่มี ไม่ใช่ลืมเขียน
+
+### P1-1 — E-02: Direct CLI bypass ได้ (known limitation)
+
+- **คืออะไร:** burner CLI เรียกตรงจาก shell ได้โดยไม่ต้องมี grant ไม่ต้องผ่าน
+  orchestrator — พิสูจน์แล้วด้วยเทสต์ `test_direct_cli_bypasses_orchestrator`
+  (CLI ทั้งสองตัวสร้างไฟล์ output จริง)
+- **ทำไมถึงเป็น P1 ไม่ใช่ P0:** นี่เป็นขอบเขตที่ Spec §10 เขียนไว้ตั้งแต่แรก
+  (offline tests พิสูจน์ได้แค่พฤติกรรมที่ software interface) ไม่ใช่ช่องโหว่
+ ที่ตรวจเจอใหม่ และไม่มีงานที่ไม่ปลอดภัยเดินผ่านทางที่กำหนดได้
+- **Mitigation (เป็นลายลักษณ์อักษร):** รับว่าเป็นข้อจำกัดที่รู้จัก (L2 หัวข้อ 7)
+  + งานต่อไปคือ least-privilege execution (OS/container confinement) ตาม
+  Spec §14 ข้อ 3 — ต้องมีก่อน production จริง (ดูหัวข้อ 12)
+- **เจ้าของ:** ฟิลิป (สั่งแยกหลัง Phase 2) — **กำหนด:** ตั๋วหลัง Phase 2 ยังไม่กำหนดวัน
+
+### P1-2 — G1: chip_burn ทิ้งโฟลเดอร์ temp สะสมทุกครั้งที่เบิร์น
+
+- **คืออะไร:** `chip_burn.py:246` ใช้ `tempfile.mkdtemp(prefix='chipstrip-',
+  dir='/tmp')` แล้วไม่มีโค้ดลบเลย (grep `rmtree|remove|cleanup` ได้ 0 ผล)
+  วัดจริงใน P2-009: พีค 10.67 MB (คลิป 30 วิ) เหลือค้าง 1 โฟลเดอร์ 10.67 MB
+  หลังจบ ส่วนใน P2-010 เทสต์ E-02 (คลิป 3 วิ) ทิ้งไว้ 1.6 MB (วัดแล้วลบออกแล้ว)
+- **ทำไมถึงเป็น P1 ไม่ใช่ P0:** คลิปเดียวไม่เป็นอันตราย (พีค 10.67 MB ห่างจาก
+  tmpfs 512 MB มาก) แต่สะสมไม่มีขอบบน — ประมาณ 50 รอบ × ~10.7 MB ≈ 535 MB
+  เกิน tmpfs 512 MB ได้ถ้าไม่มีใครลบ
+- **Mitigation (เป็นลายลักษณ์อักษร):** แผนแก้ 4 ทางเลือกในหัวข้อ 11 (ฟิลิป
+  อนุมัติ D4 ตัว (ก) แล้ว: ประเมินใน P2-010 แล้วขออนุมัติแยก — ยังไม่แก้
+  ในตั๋วนี้เพราะต้องแตะโฟลว์ burner เดิม)
+- **เจ้าของ:** ฟิลิป (เลือกทางแก้ + สั่งแยกหลัง P2-010) — **กำหนด:** หลัง P2-010
+  ยังไม่กำหนดวัน (แต่ต้องมีก่อนประกาศ GO — ตามแผน §4.6)
+
+## 10. Observations (P2 ทุกข้อ)
+
+### O-01 — entrypoint ต่องานที่ค้างกลางทางไม่ได้ (C-16)
+
+- **เจออะไร:** แผน P2-010 คาดไว้ว่าถ้าบันทึก counts=2 ลง checkpoint แล้วเรียก
+  entrypoint ใหม่ให้ล้มอีก จะได้ counts=3 แล้วหมดโควต้า — **ผลจริงไม่เป็นแบบนั้น:**
+  entrypoint ปฏิเสธงานที่อยู่เลย INTAKE ไปแล้วทันที (`AUDIT_CORRUPT`,
+  `final_state=FAILED_JOB`, render 0 ครั้ง) เพราะ `_step_intake` บังคับว่า
+  checkpoint ต้องอยู่ที่สถานะ INTAKE + revision 1 เท่านั้น
+  (พิสูจน์ด้วยเทสต์ `test_quota_preserved_but_entrypoint_cannot_resume_mid_pipeline`)
+- **ทำไมยังให้ตาราง C-16 ผ่าน:** ภัยที่แถวนี้กันคือ "ตัวนับรีเซ็ตเมื่อ restart" —
+  **ตัวนับไม่เคยรีเซ็ตเลย** (อยู่ 2 เท่าเดิมบน disk) และไม่มี render เกิดขึ้น
+  คุณสมบัติด้านความปลอดภัยครบ ส่วนที่ขาดคือ "ความสามารถต่องาน"
+  ไม่ใช่ "การป้องกัน"
+- **ทำไมถึงเป็น P2 ไม่ใช่ P1:** การปฏิเสธเป็นแบบ fail-closed โดยออกแบบ
+  (ไม่ใช่การป้องกันที่หายหรือทำงานผิด) ผลกระทบคือเรื่องปฏิบัติการ —
+  งานที่เครื่องดับกลางทางต้องเริ่มใหม่ด้วย job + grant ใหม่ — ไม่ใช่เรื่อง
+  ความปลอดภัย
+- **Mitigation:** บันทึกพฤติกรรมนี้ไว้ในเอกสาร (ตรงนี้) + ตั๋วแยกหลัง Phase 2
+  ว่าจะเอาทางต่องานกลางทางหรือไม่ (ถ้าเอาต้องออกแบบให้ชัด ไม่ใช่แอบแก้
+  `_step_intake`)
+- **เจ้าของ:** ฟิลิป (สั่งแยก) — **กำหนด:** ตั๋วหลัง Phase 2 ยังไม่กำหนดวัน
+
+### O-02 — ตัวเลข baseline viralpop ต่างจากที่ Codex วัดไว้ตอน P2-002
+
+- **เจออะไร:** รอบนี้วัดได้ 132 ผ่าน / 0 fail / 10 error ส่วน baseline P2-002
+  คือ 118 ผ่าน / 3 fail / 21 error (รวม 142 ข้อเท่ากัน) — 3 fail เก่าไม่เกิดขึ้น
+  ซ้ำในการรันรอบนี้ น่าจะเพราะสภาพแวดล้อมเปลี่ยน (ติดตั้ง fonttools และ
+  uharfbuzz 0.57.0 หลัง P2-002)
+- **Mitigation:** ให้ผู้ตรวจอิสระแกน 1 รันชุด viralpop ซ้ำแล้วเทียบผล
+  (log อยู่ใน `evidence/run-log-viralpop.txt` พร้อมคำสั่งที่ใช้)
+- **เจ้าของ:** ผู้ตรวจแกน 1 (Codex) — **กำหนด:** ระหว่างงานตรวจ 2 แกน
+
+### O-03 — G2: ตัวตรวจ "ความล้มเหลวซ้ำทุกคลิป" → FAILED_SYSTEM ยังไม่มี
+
+- **เจออะไร:** ขอบเขต single-clip ของ Phase 2A ไม่มี "คลิปถัดไป" ให้สังเกต
+  จึงตรวจ "ซ้ำทุกคลิป" ไม่ได้ — เป็นข้อจำกัดเปิด ไม่ใช่บั๊กในคลิปเดียว
+- **Mitigation:** แบบร่างการออกแบบ + แบบร่างเทสต์อยู่ในหัวข้อ 11 (G2)
+- **เจ้าของ:** ฟิลิป (สั่งแยกหลัง Phase 2) — **กำหนด:** ตั๋วหลัง Phase 2
+  (multi-clip runner) ยังไม่กำหนดวัน
+
+## 11. ของค้างประเมิน G1/G2 (+ G3/G4/G5 ปิดแล้วด้วยเทสต์ใหม่)
+
+### G1 — แผนแก้ chip_burn ทิ้ง temp (ประเมินเท่านั้น — ห้ามแก้ในตั๋วนี้)
+
+**ข้อเท็จจริงที่วัดได้:** พีค 10.67 MB (คลิป 30 วิ, วัดทุก 0.5 วิ 521 ครั้ง
+ใน P2-009) / เหลือค้าง ~10.7 MB ทุกรอบ / ไม่มีโค้ดลบเลย / ใน P2-010
+เทสต์ E-02 (คลิป 3 วิ) ทิ้งไว้ 1.6 MB (วัดแล้วลบออกแล้วหลังวัด)
+
+**ทางเลือก (ต้องขออนุมัติฟิลิปแยก — D4 ตัว (ก) ที่อนุมัติแล้ว):**
+
+| ทางเลือก | วิธี | ข้อดี | ข้อเสีย / ความเสี่ยง |
+|---|---|---|---|
+| (ก) wrapper ลบ temp หลังเบิร์นสำเร็จ | ห่อการเรียก burner แล้วลบ `chipstrip-*` หลังจบ | ไม่แก้ไฟล์ burner เดิม | ต้องแตะโฟลว์เรียก burner (orchestrator/adapter) — ต้องขออนุมัติแยก |
+| (ข) แก้ chip_burn.py ให้รับพารามิเตอร์ temp dir | เพิ่มพารามิเตอร์เลือก temp dir | สะอาดที่สุด | แตะไฟล์ burner เดิมโดยตรง — ต้องขออนุมัติแยกเช่นกัน |
+| (ค) งานทำความสะอาดรอบข้าง | cron/hook ลบ `chipstrip-*` เก่าเป็นระยะ | ไม่แตะโค้ดผลิตเลย | ลบได้เฉพาะของเก่า ถ้าเครื่องดับระหว่างเบิร์นแล้วรันต่อทันทีอาจลบของที่กำลังใช้ |
+| (ง) ปล่อยไว้ก่อน + ติดป้ายเตือน | รับความเสี่ยงแบบมีหลักฐาน + เขียนไว้ในเอกสาร | ไม่ต้องทำอะไรเลย | สะสมจน tmpfs เต็มได้ถ้ารันหลายรอบโดยไม่ลบ — ต้องมีคนลบด้วยมือเป็นประจำ |
+
+**บีนแนะนำทาง (ค) เป็นขั้นตอนแรก** (ไม่แตะโค้ดผลิตเลย ปลอดภัยที่สุด)
+แล้วค่อยทำ (ก) เมื่อฟิลิปอนุมัติให้แตะโฟลว์เรียก burner — แต่คำตัดสิน
+สุดท้ายเป็นของฟิลิป
+
+### G2 — แบบร่างตัวตรวจ "ความล้มเหลวซ้ำทุกคลิป" → FAILED_SYSTEM
+
+- **นิยามที่วัดได้ (เสนอ):** ความล้มเหลวเดิม (failure code เดียวกัน) เกิดกับ
+  คลิปที่ต่างกัน ≥3 คลิปติดกัน (เสนอ N=3) โดยไม่มีคลิปสำเร็จคั่นกลาง
+- **ตำแหน่งตัวตรวจ (แบบร่าง):** runner หลายคลิป (ยังไม่มีใน Phase 2A) นับข้าม
+  คลิปในที่เก็บถาวรแยก (ไม่ใช่ checkpoint ของคลิปเดียว) — ถ้าเกินเกณฑ์
+  → หยุด runner ทั้งหมด + `FAILED_SYSTEM`
+- **แบบร่างเทสต์:** จำลอง runner 3 คลิปที่ล้มด้วย code เดียวกัน → คาดหวังว่า
+  ตัวตรวจหยุดคลิปที่ 4 (เทสต์นี้เขียนได้ก็ต่อเมื่อมี runner หลายคลิปแล้ว)
+- **ข้อจำกัดที่ต้องเขียนไว้:** ใน Phase 2A ตัวตรวจนี้ตรวจไม่ได้จริง —
+  P2-010 **ห้ามอ้างว่า FAILED_SYSTEM ครอบคลุมความล้มเหลวซ้ำทุกคลิปแล้ว**
+
+### G3/G4/G5 — ปิดแล้วด้วยเทสต์ใหม่ใน P2-010
+
+- **G3 (fake Drive parent เป็น symlink):** ปิดแล้ว — เทสต์ D-01
+  (`test_drive_parent_symlink_rejected`) พิสูจน์ว่า adapter ปฏิเสธ
+- **G4 (owner_id ผิดตัวเดียว):** ปิดแล้ว — เทสต์ D-02
+  (`test_owner_id_off_by_one_rejected`) พิสูจน์ว่าปฏิเสธก่อนเขียนแม้แต่ 1 ไบต์
+- **G5 (หมดโควต้า retry ข้าม restart):** ปิดในส่วนความปลอดภัยแล้ว — เทสต์ C-16
+  พิสูจน์ว่าตัวนับไม่เคยรีเซ็ต (ดูหัวข้อ 10 O-01 สำหรับส่วนความสามารถที่ยังขาด)
+
+## 12. เกณฑ์ promotion — "พร้อม" หมายถึงอะไร (Spec §14 — ห้ามอ้างเกิน)
+
+P2-010 ผ่าน = **"Phase 2 offline milestone ผ่าน" เท่านั้น**
+(development milestone) — **ไม่ใช่** "พร้อม production" และ **ไม่ใช่**
+"เปิด auto mode ได้"
+
+ของที่ต้องมีก่อน production จริง (Spec §14 — ยังขาดทุกข้อ):
+
+1. Trusted owner-side grant issuer (private key อยู่นอก workspace/agent)
+2. True revocation checking (ไม่ใช่ test status ที่เซ็นด้วย test key)
+3. Least-privilege execution (OS/container confinement)
+4. Real MFA/Groq/platform tests (live — อยู่ในรายการ NOT_RUN)
+5. Representative listening and visual human inspection (คนฟัง/ดูจริง — อยู่ในรายการ NOT_RUN)
+6. ฟิลิปอนุมัติแยกต่างหาก (explicit separate approval)
+
+**ห้ามเขียนในเอกสารนี้โดยเด็ดขาด:** "พร้อม production", "ปลอดภัยเต็มรูปแบบ",
+"agent bypass ไม่ได้", "ผ่านการตรวจ production" — คำที่อนุญาตมีแค่
+"Phase 2 offline milestone ผ่าน/ไม่ผ่าน" + "GO/NO-GO สำหรับขอบเขต Phase 2
+offline เท่านั้น"
+
+## 13. ลายเซ็นผู้ตรวจอิสระ 2 แกน + วันที่
+
+> **สถานะ: ยังไม่มีลายเซ็น** — งานนี้เป็นงานเขียนของทีมบีนเอง (คนเขียนโค้ด
+> P2-010) จึง **ห้าม** อ้างว่าตรวจอิสระแล้ว งานตรวจ 2 แกนเป็นขั้นตอนแยก
+> ทีหลัง (ตาม D2 ที่ฟิลิปอนุมัติ) — บีนจะเป็นคนสั่ง Codex หลัง 18:00 วันนี้
+> และยืนยันสถานะโควต้า AGY ก่อนสั่งงานตรวจแกน 2
+
+| แกน | ผู้ตรวจ | ลายเซ็น + วันที่ | commit ที่ตรวจ |
+|---|---|---|---|
+| แกนที่ 1 — Repo standards / security (N-01–N-12) | Codex (เสนอ — หลังรีเซ็ต 18:00 วันนี้) | _ยังไม่เซ็น_ | _—_ |
+| แกนที่ 2 — Spec compliance (S-01–S-09) | AGY (เสนอ — หลังรีเซ็ต ~14 พ.ย. 11:15 น.) | _ยังไม่เซ็น_ | _—_ |
+| ทางสำรอง (ถ้า Codex/AGY ไม่ว่าง) | บีนตรวจเอง + เขียนไว้ชัดว่า "ไม่เป็นอิสระเต็มรูปแบบ" และจัดเป็น P1 observation | _ยังไม่เซ็น_ | _—_ |
+
+**เงื่อนไขสุดท้ายของ GO แบบมีเงื่อนไข:** คำตัดสินในหัวข้อ 1 จะมีผลก็ต่อเมื่อ
+ผู้ตรวจอิสระ 2 แกนเซ็นชื่อแล้ว และไม่มี P0 เพิ่ม / P1 เพิ่มจนรวมเป็น 3 ข้อ —
+ถ้ามี ให้พลิกเป็น NO-GO แล้วส่งต่อเป็นงานแก้แยก
+
+---
+
+## ภาคผนวก: วิธีตรวจซ้ำ (reproduce)
+
+```bash
+cd <repo> && git checkout phase2/p2-010-adversarial-review
+# 1. ชุดเต็ม (2 คำสั่ง — ห้ามใช้แค่ discover -s tests เพราะจะรันแค่ 6 ข้อ)
+python -m unittest discover -s tests/phase2 -p 'test_*.py' -v        # 189 ข้อ
+python -m unittest discover -s tests -p 'test_offline_foundation.py' -v  # 6 ข้อ
+# 2. viralpop + styles (baseline)
+python -m unittest discover -s subtitle/viralpop/tests -v            # 142 ข้อ
+python subtitle/styles/test_styles.py                                 # exit 0
+# 3. สุขอนามัย
+git diff --check 650bccf..HEAD && git diff --check                    # ต้อง exit 0 ทั้งคู่
+grep -rn "shell=True" subtitle/ --include="*.py"                     # ต้อง 0 ผล
+grep -rni sqlite tests/phase2/test_adversarial.py                     # ต้อง 0 ผล
+grep -rn groq subtitle/core/gates.py subtitle/core/orchestrator.py subtitle/core/qc.py  # ต้อง 0 ผล
+```
+
+**ข้อผิดในแผนที่ P2-010 เจอระหว่างทำ (บันทึกไว้ให้ผู้ตรวจรู้):**
+
+1. แผน §8.1 T-01 (และ §12.1 checklist) ยังเขียนคำสั่งรันชุดเต็มเป็น
+   `discover -s tests -v` คำสั่งเดียว — คำสั่งนี้รันแค่ 6 เทสต์ Foundation
+   แล้วขึ้น OK (กับดัก false-pass ตาม C2) P2-010 **ไม่ได้ทำตาม**บรรทัดนั้น
+   แต่ทำตาม §5.2 ที่แก้แล้ว (รัน 2 คำสั่ง) — หลักฐานอยู่ในหัวข้อ 4
+2. แผน §4.3 C-16 คาดว่า entrypoint จะต่องานที่ค้างกลางทางได้ (counts=3
+   แล้วหมดโควต้า) — ผลจริงคือ entrypoint ปฏิเสธงานที่เลย INTAKE ไปแล้ว
+   (`AUDIT_CORRUPT`) ดูหัวข้อ 10 O-01 — ตาราง C-16 ให้ PASS เพราะภัยที่กัน
+   (ตัวนับรีเซ็ต) ไม่เกิดขึ้นจริง
+
+**ไฟล์หลักฐานทั้งหมด:** `docs/phase2/evidence/` — `threat-matrix.csv`
+(77 แถว), `run-log-phase2.txt`, `run-log-foundation.txt`,
+`run-log-viralpop.txt`, `run-log-styles.txt`, `subprocess-inventory.txt`,
+`non-regression.md`, `diff-check.txt`
