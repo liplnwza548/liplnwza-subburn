@@ -1,6 +1,6 @@
 command: python -m unittest discover -s subtitle/viralpop/tests -v
-commit: 650bccf9ede4d802ee5ea7a02e097d3669d562bd (branch phase2/p2-010-adversarial-review)
-date: 2026-11-11T08:30:50Z
+commit: 8187cb93227b3e78608372df7457d5023c4a1c9d (branch phase2/p2-010-adversarial-review)
+date: 2026-11-11T18:55:57Z
 host: htch-runtime
 
 test_cross_line_merge_refused_when_disallowed (test_cue_decisions.TestMergeProductionGuards.test_cross_line_merge_refused_when_disallowed) ... ok
@@ -312,7 +312,7 @@ Traceback (most recent call last):
 FileNotFoundError: [Errno 2] No such file or directory: '/home/box/subtitle-work/scripts/batch01_v1/clip04.txt'
 
 ----------------------------------------------------------------------
-Ran 142 tests in 22.842s
+Ran 142 tests in 15.958s
 
 FAILED (errors=10)
 CUE_WARN: cue 0 ('สวยแพงมาก'): 0.49s under 0.6s after audio-driven trim — flagged for Lip review

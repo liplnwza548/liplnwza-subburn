@@ -1,6 +1,6 @@
 command: python -m unittest discover -s tests -p 'test_offline_foundation.py' -v
-commit: 650bccf9ede4d802ee5ea7a02e097d3669d562bd (branch phase2/p2-010-adversarial-review)
-date: 2026-11-11T08:30:50Z
+commit: 8187cb93227b3e78608372df7457d5023c4a1c9d (branch phase2/p2-010-adversarial-review)
+date: 2026-11-11T18:55:57Z
 host: htch-runtime
 
 test_burn_cells_stop_before_subprocess_without_approval (test_offline_foundation.NotebookApprovalTests.test_burn_cells_stop_before_subprocess_without_approval) ... ok
@@ -11,6 +11,6 @@ test_missing_approval_refused (test_offline_foundation.NotebookApprovalTests.tes
 test_unknown_word_is_not_guessed_when_chunking (test_offline_foundation.StandaloneStyleTests.test_unknown_word_is_not_guessed_when_chunking) ... ok
 
 ----------------------------------------------------------------------
-Ran 6 tests in 0.275s
+Ran 6 tests in 0.200s
 
 OK

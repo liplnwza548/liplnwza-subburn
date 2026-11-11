@@ -1,6 +1,6 @@
 command: python -m unittest discover -s tests/phase2 -p 'test_*.py' -v
-commit: 650bccf9ede4d802ee5ea7a02e097d3669d562bd (branch phase2/p2-010-adversarial-review)
-date: 2026-11-11T08:29:45Z
+commit: 8187cb93227b3e78608372df7457d5023c4a1c9d (branch phase2/p2-010-adversarial-review)
+date: 2026-11-11T18:55:38Z
 host: htch-runtime
 
 test_delivery_does_not_touch_source (test_adapters.AdapterTests.test_delivery_does_not_touch_source) ... ok
@@ -23,16 +23,16 @@ CUE_WARN: cue 1 ('วันนี้อากาศดีมาก'): 7.3 syl/s 
 SCRIPT-BURN REPORT: OK
 SCRIPT-ALIGNMENT GATE: OK — 2 cue(s) aligned, no mismatches. May build ASS.
 filter: -vf 'ass=sub.ass:fontsdir=fdir' (ass= only, bare filenames, cwd=temp)
-output: /tmp/tmptdea3o0t/direct-viralpop.mp4
+output: /tmp/tmpca20re4l/direct-viralpop.mp4
 geometry: 320x240 (source 320x240)
 duration: src 3.000s vs out 3.000s (delta 0.000s <= 0.1s)
 audio: present (source present)
 frames:
-  - /tmp/tmptdea3o0t/direct-viralpop_qa/qa_01_10pct.png
-  - /tmp/tmptdea3o0t/direct-viralpop_qa/qa_02_50pct.png
-  - /tmp/tmptdea3o0t/direct-viralpop_qa/qa_03_90pct.png
+  - /tmp/tmpca20re4l/direct-viralpop_qa/qa_01_10pct.png
+  - /tmp/tmpca20re4l/direct-viralpop_qa/qa_02_50pct.png
+  - /tmp/tmpca20re4l/direct-viralpop_qa/qa_03_90pct.png
 chips: 5 (1.67/s), speech 0.00-1.42s of 3.0s
-chips json: /tmp/tmptdea3o0t/direct-chips.mp4.chips.json
+chips json: /tmp/tmpca20re4l/direct-chips.mp4.chips.json
   frame 0/90
 ok
 test_drive_parent_symlink_rejected (test_adversarial.AdversarialTests.test_drive_parent_symlink_rejected) ... ok
@@ -258,8 +258,8 @@ test_valid_path_reaches_ready_for_review (test_state.StateTransitionTests.test_v
 test_validate_transition_matrix (test_state.StateTransitionTests.test_validate_transition_matrix) ... ok
 
 ----------------------------------------------------------------------
-Ran 189 tests in 53.498s
+Ran 189 tests in 16.395s
 
 OK
 strip: 27 unique frames of 90
-DONE: /tmp/tmptdea3o0t/direct-chips.mp4
+DONE: /tmp/tmpca20re4l/direct-chips.mp4

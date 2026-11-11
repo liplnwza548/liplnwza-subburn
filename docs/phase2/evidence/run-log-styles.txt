@@ -1,9 +1,10 @@
 command: python subtitle/styles/test_styles.py (run as a script; it is not a unittest module)
-commit: 650bccf9ede4d802ee5ea7a02e097d3669d562bd (branch phase2/p2-010-adversarial-review)
-date: 2026-11-11T08:32:18Z
+commit: 8187cb93227b3e78608372df7457d5023c4a1c9d (branch phase2/p2-010-adversarial-review)
+date: 2026-11-11T18:56:17Z
 host: htch-runtime
 note: an initial 'python -m unittest subtitle.styles.test_styles -v' run found 0 tests (no TestCase in the file) but the module-level checks printed PASS; the script run below is the authoritative one.
 
 T3 thai strip saved: thai_test_strip.png (check by eye: no tofu, vowels attached)
 PASS: T1 position lock, T2 no subtitles filter, T4 style list lock
-exit=0
+
+T3 eye check (W0-c, R-08 / P2-A1-03): PASS — checked by Bean (the agent) on 2026-11-12 from the regenerated strip at this head (thai_test_strip.png, sha256 7b55a5da94a86d015b563ebde411c7e9c205eae941c7aee1cc5d8224a1c50356). Text "แต่ เก้าอี้ ตัวนี้ ใช้ได้ ดีมาก" renders clean: no tofu boxes, leading vowels / above-below marks / tone marks all attached to their words. T3 is therefore VISUAL_CHECKED (was GENERATED / VISUAL_NOT_CHECKED).

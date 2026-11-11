@@ -3,10 +3,10 @@
 # Date: 2026-11-11; section 3 corrected 2026-11-12 at W0 (P2-A1-01)
 
 ## 1. Committed range: git diff --check 650bccf..HEAD
-exit=0 (verified 2026-11-12 at W0 on head 780766b)
+exit=0 (verified 2026-11-12 at W0-e on head 8187cb9)
 
 ## 2. Uncommitted working tree: git diff --check
-exit=0 (verified 2026-11-12 at W0 on head 780766b)
+exit=0 (verified 2026-11-12 at W0-e on head 8187cb9)
 
 ## 3. Staged diff (before commit): git diff --cached --check
 exit=0 (recorded at staging time; CORRECTED 2026-11-12 at W0: the staged set at commit 3f709e9 was 10 new files, not 9 — diff-check.txt itself was the 10th file, added after this line was first written; verified with git diff --name-only 650bccf..HEAD = 10 files)
