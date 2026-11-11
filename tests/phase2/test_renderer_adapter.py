@@ -1,6 +1,7 @@
 """Tests for P2-006 renderer adapter seam between orchestrator and legacy subtitle burners."""
 
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 import subprocess
 import sys
@@ -10,6 +11,7 @@ import unittest
 from unittest.mock import Mock, patch
 
 from subtitle.core.audit import save_checkpoint
+from subtitle.core.authorization import Decision
 from subtitle.core.job import JobSpec, SourceSnapshot, StagingPaths
 from subtitle.core.orchestrator import _step_auto_mode_render
 from subtitle.core.renderer_adapter import (
@@ -231,7 +233,8 @@ class RendererAdapterTests(unittest.TestCase):
         # Note: Passing TMPDIR does not solve chip_burn's hardcoded dir='/tmp' in mkdtemp (residual risk C2 accepted in writing).
 
     @patch('subtitle.core.renderer_adapter.subprocess.run')
-    def test_execute_renderer_nonzero_exit_fails_and_orchestrator_records_failed_job(self, mock_run: Mock) -> None:
+    @patch('subtitle.core.orchestrator.verify', return_value=Decision(True, 'OK'))
+    def test_execute_renderer_nonzero_exit_fails_and_orchestrator_records_failed_job(self, mock_verify: Mock, mock_run: Mock) -> None:
         # (a) execute_renderer on nonzero exit without output file fails
         mock_run.return_value = Mock(returncode=1, stdout='', stderr='boom')
         if self.candidate_output_path.exists():
@@ -274,15 +277,40 @@ class RendererAdapterTests(unittest.TestCase):
             auto_mode=True,
             evidence_ids=('ev_transcript_job-1', 'ev_g1_job-1', 'ev_g2_job-1', 'ev_g3_job-1'),
             now_iso='2026-11-10T12:00:00Z',
+            now=datetime(2026, 11, 10, 12, tzinfo=timezone.utc),
+            # P2-009: the retry loop re-verifies before attempts 2+; the
+            # fixture checkpoint already counts render_candidate=1, so
+            # attempt 2 re-verifies first. verify() is mocked above to
+            # return OK, so the re-verify passes and this test isolates
+            # the renderer-failure recording (not verify). The grant
+            # bytes are never read from disk by the step (P2-003 C1).
+            grant_bytes=b'{}',
+            status_bytes=b'{}',
+            trusted_grant_keys={},
+            trusted_status_keys={},
+            # Fake sleep: the retry backoff must not pause the test run.
+            sleep_fn=lambda _seconds: None,
         )
 
         self.assertFalse(orch_result.success)
         self.assertEqual(orch_result.final_state, 'FAILED_JOB')
         self.assertEqual(orch_result.deny_code, 'RENDER_EXECUTION_FAILED')
         self.assertTrue(orch_result.renderer_invoked)
+        # P2-009: the fixture already counted 1 attempt, so this call
+        # made attempts 2 and 3, then exhausted the quota (1 + 2 = 3).
+        self.assertEqual(
+            orch_result.checkpoint.attempt_counts['render_candidate'], 3,
+        )
+        self.assertTrue(
+            (job_dir / 'evidence' / 'retry_render_candidate_002.json').is_file(),
+        )
+        self.assertTrue(
+            (job_dir / 'evidence' / 'retry_render_candidate_003.json').is_file(),
+        )
 
     @patch('subtitle.core.renderer_adapter.subprocess.run')
-    def test_execute_renderer_timeout_fails_and_orchestrator_records_failed_job(self, mock_run: Mock) -> None:
+    @patch('subtitle.core.orchestrator.verify', return_value=Decision(True, 'OK'))
+    def test_execute_renderer_timeout_fails_and_orchestrator_records_failed_job(self, mock_verify: Mock, mock_run: Mock) -> None:
         # (a) execute_renderer on timeout fails with exit_code=-1
         mock_run.side_effect = subprocess.TimeoutExpired(cmd=('python', 'fake.py'), timeout=10)
         if self.candidate_output_path.exists():
@@ -325,12 +353,36 @@ class RendererAdapterTests(unittest.TestCase):
             auto_mode=True,
             evidence_ids=('ev_transcript_job-1', 'ev_g1_job-1', 'ev_g2_job-1', 'ev_g3_job-1'),
             now_iso='2026-11-10T12:00:00Z',
+            now=datetime(2026, 11, 10, 12, tzinfo=timezone.utc),
+            # P2-009: the retry loop re-verifies before attempts 2+; the
+            # fixture checkpoint already counts render_candidate=1, so
+            # attempt 2 re-verifies first. verify() is mocked above to
+            # return OK, so the re-verify passes and this test isolates
+            # the renderer-failure recording (not verify). The grant
+            # bytes are never read from disk by the step (P2-003 C1).
+            grant_bytes=b'{}',
+            status_bytes=b'{}',
+            trusted_grant_keys={},
+            trusted_status_keys={},
+            # Fake sleep: the retry backoff must not pause the test run.
+            sleep_fn=lambda _seconds: None,
         )
 
         self.assertFalse(orch_result.success)
         self.assertEqual(orch_result.final_state, 'FAILED_JOB')
         self.assertEqual(orch_result.deny_code, 'RENDER_EXECUTION_FAILED')
         self.assertTrue(orch_result.renderer_invoked)
+        # P2-009: the fixture already counted 1 attempt, so this call
+        # made attempts 2 and 3, then exhausted the quota (1 + 2 = 3).
+        self.assertEqual(
+            orch_result.checkpoint.attempt_counts['render_candidate'], 3,
+        )
+        self.assertTrue(
+            (job_dir / 'evidence' / 'retry_render_candidate_002.json').is_file(),
+        )
+        self.assertTrue(
+            (job_dir / 'evidence' / 'retry_render_candidate_003.json').is_file(),
+        )
 
     @patch('subtitle.core.renderer_adapter.subprocess.run')
     def test_execute_renderer_missing_output_fails_closed(self, mock_run: Mock) -> None:

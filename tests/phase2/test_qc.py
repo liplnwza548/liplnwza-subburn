@@ -1059,6 +1059,69 @@ class QCTestCase(unittest.TestCase):
 
         self.assertEqual(result.report.status, "REVIEW_CANDIDATE")
 
+    # --- P2-009 section 8.3: early return when authorization is denied ---
+    # The code exists in run_qc (qc.py:1134); the 19 tests above never
+    # passed a denied authorization_decision in (a P2-007 gap).
+
+    def test_early_return_when_authorization_denied(self) -> None:
+        """A denied authorization decision blocks QC before any probe."""
+        result = run_qc(
+            self.spec,
+            self.render,
+            now=NOW,
+            job_dir=self.job_dir,
+            authorization_decision=Decision(False, 'AUTH_REVOKED'),
+            script_sha256=SCRIPT_SHA256,
+        )
+
+        self.assertEqual(result.status, 'BLOCKED')
+        self.assertEqual(result.target_state, 'BLOCKED_NEEDS_REVIEW')
+        self.assertIsNone(result.evidence_record)
+        self.assertEqual(result.evidence_id, '')
+        self.assertIn('AUTH_REVOKED', result.reason)
+        # All 10 checks (8 technical + 2 human) are NOT_CHECKED.
+        self.assertEqual(len(result.report.checks), 10)
+        for check in result.report.checks:
+            self.assertEqual(check.result, 'NOT_CHECKED')
+        self.assertEqual(
+            result.report.human_audio_verification, 'NOT_CHECKED',
+        )
+        self.assertEqual(
+            result.report.human_visual_verification, 'NOT_CHECKED',
+        )
+        # No evidence file was created for a blocked QC.
+        self.assertEqual(list((self.job_dir / 'evidence').glob('ev_qc_*.json')), [])
+
+    def test_early_return_does_not_run_probes(self) -> None:
+        """A denied decision + a missing candidate + missing binaries
+        still returns the same blocked result: the probes never ran.
+        If they had run, the missing file/binary would have raised or
+        failed instead of returning this clean early return."""
+        missing_render = make_render_execution(
+            self.job_dir / 'does-not-exist.mp4',
+            b'',
+            exit_code=0,
+        )
+        result = run_qc(
+            self.spec,
+            missing_render,
+            now=NOW,
+            job_dir=self.job_dir,
+            authorization_decision=Decision(False, 'AUTH_REVOKED'),
+            script_sha256=SCRIPT_SHA256,
+            ffmpeg_bin='/nonexistent/ffmpeg',
+            ffprobe_bin='/nonexistent/ffprobe',
+        )
+
+        self.assertEqual(result.status, 'BLOCKED')
+        self.assertEqual(result.target_state, 'BLOCKED_NEEDS_REVIEW')
+        self.assertIsNone(result.evidence_record)
+        self.assertEqual(result.evidence_id, '')
+        self.assertIn('AUTH_REVOKED', result.reason)
+        self.assertEqual(len(result.report.checks), 10)
+        for check in result.report.checks:
+            self.assertEqual(check.result, 'NOT_CHECKED')
+
 
 if __name__ == "__main__":
     unittest.main()

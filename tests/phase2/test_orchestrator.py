@@ -2,6 +2,7 @@
 
 import base64
 import copy
+from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 import hashlib
 import json
@@ -10,19 +11,27 @@ from pathlib import Path
 import shutil
 import subprocess
 import tempfile
+from types import MappingProxyType
 import unittest
 from unittest.mock import Mock, patch
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from pythainlp import word_tokenize
 
-from subtitle.core.audit import ReplayLedger, load_checkpoint, load_event_log
+from subtitle.core.audit import (
+    ReplayLedger,
+    load_checkpoint,
+    load_event_log,
+    save_checkpoint,
+)
 from subtitle.core.authorization import Decision, canonical
+from subtitle.core.qc import QCResult
 from subtitle.core.orchestrator import (
     AUTO_MODE_DISABLED,
     RENDER_EXECUTION_FAILED,
     OrchestratorResult,
     _resolve_existing_binding,
+    _step_auto_mode_render,
     _step_intake,
     _step_mfa_g2,
     _step_pre_verify,
@@ -277,6 +286,11 @@ class OrchestratorTests(unittest.TestCase):
             existing_binding=None,
         )
         args.update(overrides)
+        # P2-009: the caller supplies the script digest (P2-006 Q5);
+        # run_qc needs it to create the ev_qc evidence record.
+        args['script_sha256'] = hashlib.sha256(
+            args['script_text'].encode('utf-8'),
+        ).hexdigest()
         return orchestrate_render_job(raw_grant, raw_status, **args)
 
     def _mock_render_success(self, mock_run):
@@ -288,6 +302,46 @@ class OrchestratorTests(unittest.TestCase):
             return Mock(returncode=0, stdout='', stderr='')
 
         mock_run.side_effect = side_effect
+
+    def _mock_render_fail_then_succeed(self, mock_run, fail_count=1):
+        """Render mock: fail the first ``fail_count`` calls (exit 1, no
+        output file), then succeed like _mock_render_success."""
+        calls = {'n': 0}
+
+        def side_effect(command, **kwargs):
+            calls['n'] += 1
+            if calls['n'] <= fail_count:
+                return Mock(returncode=1, stdout='', stderr='boom')
+            out_idx = list(command).index('--out') + 1
+            out_path = Path(command[out_idx])
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            out_path.write_bytes(b'fake-candidate-mp4-bytes' * 100)
+            return Mock(returncode=0, stdout='', stderr='')
+
+        mock_run.side_effect = side_effect
+
+    def _mock_qc_pass(self, mock_qc):
+        """Stand-in for a passing run_qc (P2-009 section 5.4).
+
+        The render mock above writes fake bytes, not a real MP4, so
+        real QC probes would fail on it. This canned QCResult lets
+        tests 1-2 verify the wiring (entrypoint calls run_qc fresh
+        after a successful render and transitions per its target_state)
+        without pretending the fake bytes passed real probes. The real
+        QC path is covered by test_qc.py and by test 17 (real burn).
+        evidence_record is a stand-in object: the orchestrator only
+        checks that it is not None before collecting the evidence id;
+        the mock writes no ev_qc file (test 17 covers the real file).
+        """
+        mock_qc.return_value = QCResult(
+            status='REVIEW_CANDIDATE',
+            report=None,
+            evidence_record=Mock(),
+            evidence_id='ev_qc_job-1',
+            target_state='READY_FOR_REVIEW',
+            reason='QC passed (mocked)',
+            unsatisfied_checks=(),
+        )
 
     def _assert_zero_renders(self, result, mock_run):
         # 1. Mock subprocess was never called
@@ -312,11 +366,26 @@ class OrchestratorTests(unittest.TestCase):
                     self.assertTrue(all(e.next_state != 'RENDERED' for e in events))
 
     def test_orchestrate_happy_path_viralpop_auto_mode_true(self):
-        with patch('subtitle.core.renderer_adapter.subprocess.run') as mock_run:
+        with (
+            patch('subtitle.core.renderer_adapter.subprocess.run') as mock_run,
+            patch('subtitle.core.orchestrator.run_qc') as mock_qc,
+        ):
             self._mock_render_success(mock_run)
+            # P2-009 section 5.4: the entrypoint now calls run_qc fresh
+            # after a successful render; the happy path ends at
+            # READY_FOR_REVIEW, not RENDERED.
+            self._mock_qc_pass(mock_qc)
             result = self.run_job(auto_mode=True)
 
             self.assertEqual(mock_run.call_count, 1)
+            self.assertEqual(mock_qc.call_count, 1)
+            qc_kwargs = mock_qc.call_args.kwargs
+            self.assertTrue(qc_kwargs['authorization_decision'].allowed)
+            self.assertEqual(
+                qc_kwargs['script_sha256'],
+                hashlib.sha256(SCRIPT.encode('utf-8')).hexdigest(),
+            )
+            self.assertEqual(qc_kwargs['now'], NOW_ISO)
             command = mock_run.call_args.args[0]
 
             video_idx = list(command).index('--video') + 1
@@ -348,18 +417,22 @@ class OrchestratorTests(unittest.TestCase):
             self.assertTrue(result.renderer_invoked)
             self.assertIsNone(result.deny_code)
             self.assertIsNotNone(result.checkpoint)
-            self.assertEqual(result.checkpoint.current_state, 'RENDERED')
-            self.assertEqual(result.checkpoint.state_revision, 7)
+            self.assertEqual(result.checkpoint.current_state, 'READY_FOR_REVIEW')
+            self.assertEqual(result.checkpoint.state_revision, 9)
 
             job_dir = Path(result.spec.staging.job_work_dir).parent
             events = load_event_log(job_dir / 'events.jsonl')
-            self.assertEqual(len(events), 7)
-            self.assertEqual([e.state_revision for e in events], list(range(1, 8)))
-            self.assertEqual(events[-1].next_state, 'RENDERED')
+            self.assertEqual(len(events), 9)
+            self.assertEqual([e.state_revision for e in events], list(range(1, 10)))
+            self.assertEqual(events[6].next_state, 'RENDERED')
             self.assertEqual(
-                events[-1].evidence_refs,
-                (f"render:{result.render_execution.output_sha256}",),
+                events[6].evidence_refs,
+                (
+                    f"render:{result.render_execution.output_sha256}",
+                    'retry:render_candidate:attempts=1',
+                ),
             )
+            self.assertEqual(events[-1].next_state, 'READY_FOR_REVIEW')
 
             candidate_bytes = Path(result.spec.staging.candidate_output_path).read_bytes()
             candidate_sha256 = hashlib.sha256(candidate_bytes).hexdigest()
@@ -367,11 +440,26 @@ class OrchestratorTests(unittest.TestCase):
 
             self.assertEqual(
                 result.evidence_ids,
-                ('ev_transcript_job-1', 'ev_g1_job-1', 'ev_g2_job-1', 'ev_g3_job-1'),
+                (
+                    'ev_transcript_job-1',
+                    'ev_g1_job-1',
+                    'ev_g2_job-1',
+                    'ev_g3_job-1',
+                    'ev_qc_job-1',
+                ),
             )
 
             evidence_dir = job_dir / 'evidence'
-            for ev_id in result.evidence_ids:
+            # Only the 4 real evidence files exist on disk; the mocked
+            # QC returns an id but writes no file (test 17 covers the
+            # real ev_qc file).
+            real_ev_ids = (
+                'ev_transcript_job-1',
+                'ev_g1_job-1',
+                'ev_g2_job-1',
+                'ev_g3_job-1',
+            )
+            for ev_id in real_ev_ids:
                 ev_file = evidence_dir / f"{ev_id}.json"
                 self.assertTrue(ev_file.is_file())
                 ev_data = json.loads(ev_file.read_text(encoding='utf-8'))
@@ -382,11 +470,19 @@ class OrchestratorTests(unittest.TestCase):
                 self.assertNotEqual(ev_data.get('stage'), 'RENDERED')
 
     def test_orchestrate_happy_path_paper_chips_auto_mode_true(self):
-        with patch('subtitle.core.renderer_adapter.subprocess.run') as mock_run:
+        with (
+            patch('subtitle.core.renderer_adapter.subprocess.run') as mock_run,
+            patch('subtitle.core.orchestrator.run_qc') as mock_qc,
+        ):
             self._mock_render_success(mock_run)
+            # P2-009 section 5.4: the entrypoint now calls run_qc fresh
+            # after a successful render; the happy path ends at
+            # READY_FOR_REVIEW, not RENDERED.
+            self._mock_qc_pass(mock_qc)
             result = self.run_job(style_id='paper-chips', auto_mode=True)
 
             self.assertEqual(mock_run.call_count, 1)
+            self.assertEqual(mock_qc.call_count, 1)
             command = mock_run.call_args.args[0]
             self.assertTrue(any('chip_burn.py' in arg for arg in command))
 
@@ -429,8 +525,9 @@ class OrchestratorTests(unittest.TestCase):
             self.assertTrue(result.renderer_invoked)
             self.assertIsNone(result.deny_code)
             self.assertIsNotNone(result.checkpoint)
-            self.assertEqual(result.checkpoint.current_state, 'RENDERED')
-            self.assertEqual(result.checkpoint.state_revision, 7)
+            self.assertEqual(result.checkpoint.current_state, 'READY_FOR_REVIEW')
+            self.assertEqual(result.checkpoint.state_revision, 9)
+            self.assertIn('ev_qc_job-1', result.evidence_ids)
 
     def test_orchestrate_auto_mode_false_halts_at_render_permitted_zero_renders(self):
         with patch('subtitle.core.renderer_adapter.subprocess.run') as mock_run:
@@ -907,8 +1004,17 @@ class OrchestratorTests(unittest.TestCase):
         self.assertTrue(result.renderer_invoked)
         self.assertIsNone(result.deny_code)
         self.assertIsNotNone(result.checkpoint)
-        self.assertEqual(result.checkpoint.current_state, 'RENDERED')
-        self.assertEqual(result.checkpoint.state_revision, 7)
+        # P2-009 section 5.4: after a successful real render the
+        # entrypoint runs real run_qc fresh, so the job ends at
+        # READY_FOR_REVIEW (revision 9: 7 render transitions + 2 QC).
+        self.assertEqual(result.checkpoint.current_state, 'READY_FOR_REVIEW')
+        self.assertEqual(result.checkpoint.state_revision, 9)
+        self.assertIn('ev_qc_job-1', result.evidence_ids)
+        job_dir = Path(result.spec.staging.job_work_dir).parent
+        self.assertTrue((job_dir / 'evidence' / 'ev_qc_job-1.json').is_file())
+        events = load_event_log(job_dir / 'events.jsonl')
+        self.assertEqual(len(events), 9)
+        self.assertEqual(events[-1].next_state, 'READY_FOR_REVIEW')
 
         candidate = Path(result.spec.staging.candidate_output_path)
         self.assertTrue(candidate.is_file())
@@ -935,6 +1041,274 @@ class OrchestratorTests(unittest.TestCase):
         )
         duration = float(probe.stdout.strip())
         self.assertGreater(duration, 0)
+
+    # --- P2-009 section 8.2: retry loop (7 new tests) ---
+
+    # 1. A retryable render failure retries once and then succeeds.
+    def test_retryable_render_failure_retries_and_succeeds(self):
+        sleeps = []
+        source_before = hashlib.sha256(
+            self.source_path.read_bytes(),
+        ).hexdigest()
+        with (
+            patch('subtitle.core.renderer_adapter.subprocess.run') as mock_run,
+            patch('subtitle.core.orchestrator.run_qc') as mock_qc,
+        ):
+            self._mock_render_fail_then_succeed(mock_run, fail_count=1)
+            self._mock_qc_pass(mock_qc)
+            result = self.run_job(auto_mode=True, sleep_fn=sleeps.append)
+
+            self.assertTrue(result.success)
+            self.assertEqual(result.final_state, 'READY_FOR_REVIEW')
+            self.assertEqual(mock_run.call_count, 2)
+            self.assertEqual(mock_qc.call_count, 1)
+            self.assertEqual(
+                result.checkpoint.attempt_counts['render_candidate'], 2,
+            )
+            # Backoff after attempt 1 is 2-3 seconds (counts=1).
+            self.assertEqual(len(sleeps), 1)
+            self.assertGreaterEqual(sleeps[0], 2.0)
+            self.assertLessEqual(sleeps[0], 3.0)
+
+        job_dir = Path(result.spec.staging.job_work_dir).parent
+        evidence_dir = job_dir / 'evidence'
+        for n, expected_result, expected_code in (
+            (1, 'FAILED', 'RENDER_EXECUTION_FAILED'),
+            (2, 'SUCCESS', 'NO_FAILURE'),
+        ):
+            ev_file = evidence_dir / f'retry_render_candidate_{n:03d}.json'
+            self.assertTrue(ev_file.is_file())
+            ev = json.loads(ev_file.read_text(encoding='utf-8'))
+            self.assertEqual(
+                ev['event_id'], f'evt_retry_render_candidate_{n:03d}',
+            )
+            self.assertEqual(ev['attempt_count'], n)
+            self.assertEqual(ev['result'], expected_result)
+            self.assertEqual(ev['failure_code'], expected_code)
+        # The retry loop never modifies the staged source.
+        staged = Path(result.spec.staging.staged_input_path)
+        self.assertEqual(
+            hashlib.sha256(staged.read_bytes()).hexdigest(),
+            result.spec.source.sha256,
+        )
+        self.assertEqual(
+            hashlib.sha256(self.source_path.read_bytes()).hexdigest(),
+            source_before,
+        )
+
+    # 2. Three failures in a row exhaust the quota: FAILED_JOB, no 4th render.
+    def test_exhausted_retries_go_to_failed_job(self):
+        sleeps = []
+        with (
+            patch('subtitle.core.renderer_adapter.subprocess.run') as mock_run,
+            patch('subtitle.core.orchestrator.run_qc') as mock_qc,
+        ):
+            mock_run.return_value = Mock(returncode=1, stdout='', stderr='boom')
+            result = self.run_job(auto_mode=True, sleep_fn=sleeps.append)
+
+            self.assertFalse(result.success)
+            self.assertEqual(result.final_state, 'FAILED_JOB')
+            self.assertEqual(result.deny_code, 'RENDER_EXECUTION_FAILED')
+            self.assertEqual(mock_run.call_count, 3)
+            self.assertEqual(mock_qc.call_count, 0)
+            self.assertEqual(
+                result.checkpoint.attempt_counts['render_candidate'], 3,
+            )
+            # Two backoffs: 2-3 s after attempt 1, 4-5 s after attempt 2.
+            self.assertEqual(len(sleeps), 2)
+            self.assertGreaterEqual(sleeps[0], 2.0)
+            self.assertLessEqual(sleeps[0], 3.0)
+            self.assertGreaterEqual(sleeps[1], 4.0)
+            self.assertLessEqual(sleeps[1], 5.0)
+
+        job_dir = Path(result.spec.staging.job_work_dir).parent
+        events = load_event_log(job_dir / 'events.jsonl')
+        failed = [e for e in events if e.next_state == 'FAILED_JOB']
+        self.assertEqual(len(failed), 1)
+        self.assertIn('retry:render_candidate:attempts=3', failed[0].evidence_refs)
+        self.assertIn('retry:render_candidate:exhausted', failed[0].evidence_refs)
+        evidence_dir = job_dir / 'evidence'
+        for n in (1, 2, 3):
+            self.assertTrue(
+                (evidence_dir / f'retry_render_candidate_{n:03d}.json').is_file(),
+            )
+
+    # 3. A revocation between retries cancels the job immediately.
+    def test_revoked_between_retries_cancels_job(self):
+        render_candidate_calls = {'n': 0}
+
+        def fake_verify(*args, **kwargs):
+            if kwargs.get('action') == 'render_candidate':
+                render_candidate_calls['n'] += 1
+                if render_candidate_calls['n'] == 2:
+                    return Decision(False, 'AUTH_REVOKED')
+            return Decision(True, 'OK')
+
+        with (
+            patch('subtitle.core.renderer_adapter.subprocess.run') as mock_run,
+            patch('subtitle.core.orchestrator.verify', side_effect=fake_verify),
+        ):
+            mock_run.return_value = Mock(returncode=1, stdout='', stderr='boom')
+            result = self.run_job(auto_mode=True, sleep_fn=lambda _s: None)
+
+            self.assertFalse(result.success)
+            self.assertEqual(result.final_state, 'CANCELLED')
+            self.assertEqual(result.deny_code, 'AUTH_REVOKED')
+            # Only attempt 1 rendered; the revocation cancelled the job
+            # before attempt 2's render.
+            self.assertEqual(mock_run.call_count, 1)
+            self.assertEqual(
+                result.checkpoint.attempt_counts['render_candidate'], 1,
+            )
+
+        job_dir = Path(result.spec.staging.job_work_dir).parent
+        events = load_event_log(job_dir / 'events.jsonl')
+        self.assertEqual(events[-1].next_state, 'CANCELLED')
+
+    # 4. verify() is called fresh once per attempt.
+    def test_reverify_before_every_retry(self):
+        render_candidate_calls = {'n': 0}
+
+        def fake_verify(*args, **kwargs):
+            if kwargs.get('action') == 'render_candidate':
+                render_candidate_calls['n'] += 1
+            return Decision(True, 'OK')
+
+        with (
+            patch('subtitle.core.renderer_adapter.subprocess.run') as mock_run,
+            patch('subtitle.core.orchestrator.run_qc') as mock_qc,
+            patch('subtitle.core.orchestrator.verify', side_effect=fake_verify),
+        ):
+            self._mock_render_fail_then_succeed(mock_run, fail_count=2)
+            self._mock_qc_pass(mock_qc)
+            result = self.run_job(auto_mode=True, sleep_fn=lambda _s: None)
+
+            self.assertTrue(result.success)
+            self.assertEqual(result.final_state, 'READY_FOR_REVIEW')
+            self.assertEqual(mock_run.call_count, 3)
+            # One fresh render_candidate verification per attempt: G3,
+            # the attempt-2 re-verify, the attempt-3 re-verify, and the
+            # QC step's fresh verification (4 in total, at least 3).
+            self.assertGreaterEqual(render_candidate_calls['n'], 3)
+            self.assertEqual(
+                result.checkpoint.attempt_counts['render_candidate'], 3,
+            )
+
+    # 5. run_qc is re-run fresh after a retried render (never reused).
+    def test_qc_rerun_fresh_after_retry_render(self):
+        qc_first = QCResult(
+            status='BLOCKED',
+            report=None,
+            evidence_record=Mock(),
+            evidence_id='ev_qc_job-1-a',
+            target_state='FAILED_JOB',
+            reason='QC system fault (mocked): probe failed',
+            unsatisfied_checks=('probe_failed',),
+        )
+        qc_second = QCResult(
+            status='REVIEW_CANDIDATE',
+            report=None,
+            evidence_record=Mock(),
+            evidence_id='ev_qc_job-1-b',
+            target_state='READY_FOR_REVIEW',
+            reason='QC passed (mocked)',
+            unsatisfied_checks=(),
+        )
+        with (
+            patch('subtitle.core.renderer_adapter.subprocess.run') as mock_run,
+            patch('subtitle.core.orchestrator.run_qc') as mock_qc,
+        ):
+            self._mock_render_success(mock_run)
+            mock_qc.side_effect = [qc_first, qc_second]
+            result = self.run_job(auto_mode=True, sleep_fn=lambda _s: None)
+
+            self.assertTrue(result.success)
+            self.assertEqual(result.final_state, 'READY_FOR_REVIEW')
+            self.assertEqual(mock_qc.call_count, 2)
+            self.assertEqual(mock_run.call_count, 2)
+            self.assertEqual(
+                result.checkpoint.attempt_counts['render_candidate'], 2,
+            )
+            # The second QC result is a fresh one, never a reuse of the first.
+            self.assertNotEqual(qc_first.evidence_id, qc_second.evidence_id)
+            self.assertIn('ev_qc_job-1-a', result.evidence_ids)
+            self.assertIn('ev_qc_job-1-b', result.evidence_ids)
+
+    # 6. Attempt counts survive a restart (loaded from disk, not reset).
+    def test_retry_counts_survive_restart(self):
+        # Run the job to RENDER_PERMITTED (no render yet), then pretend
+        # a previous run already made 2 attempts: replace the checkpoint
+        # on disk with counts=2 and reload it (a real restart).
+        first = self.run_job(auto_mode=False)
+        self.assertEqual(first.checkpoint.current_state, 'RENDER_PERMITTED')
+        spec = first.spec
+        job_dir = Path(spec.staging.job_work_dir).parent
+        resumed = replace(
+            first.checkpoint,
+            attempt_counts=MappingProxyType({'render_candidate': 2}),
+        )
+        save_checkpoint(job_dir / 'checkpoint.json', resumed)
+        loaded = load_checkpoint(job_dir / 'checkpoint.json')
+        self.assertEqual(loaded.attempt_counts['render_candidate'], 2)
+
+        grant_bytes = sign(self.make_grant(), self.grant_key, GRANT_DOMAIN)
+        status_bytes = sign(self.make_status(), self.status_key, STATUS_DOMAIN)
+        with patch('subtitle.core.renderer_adapter.subprocess.run') as mock_run:
+            mock_run.return_value = Mock(returncode=1, stdout='', stderr='boom')
+            result = _step_auto_mode_render(
+                spec=spec,
+                checkpoint=loaded,
+                script_text=SCRIPT,
+                mfa_artifact_bytes=make_mfa_bytes(),
+                fonts_dir=self.fonts_dir,
+                auto_mode=True,
+                evidence_ids=(
+                    'ev_transcript_job-1', 'ev_g1_job-1',
+                    'ev_g2_job-1', 'ev_g3_job-1',
+                ),
+                now_iso=NOW_ISO,
+                now=NOW,
+                grant_bytes=grant_bytes,
+                status_bytes=status_bytes,
+                trusted_grant_keys={('owner', 'g1'): self.grant_key.public_key()},
+                trusted_status_keys={('status', 's1'): self.status_key.public_key()},
+                sleep_fn=lambda _s: None,
+            )
+
+        self.assertFalse(result.success)
+        self.assertEqual(result.final_state, 'FAILED_JOB')
+        self.assertEqual(result.deny_code, 'RENDER_EXECUTION_FAILED')
+        # Only attempt 3 ran (not a fresh attempt 1): the quota was
+        # already at 2, so one more failure exhausts it.
+        self.assertEqual(mock_run.call_count, 1)
+        self.assertEqual(
+            result.checkpoint.attempt_counts['render_candidate'], 3,
+        )
+        reloaded = load_checkpoint(job_dir / 'checkpoint.json')
+        self.assertEqual(reloaded.attempt_counts['render_candidate'], 3)
+        self.assertTrue(
+            (job_dir / 'evidence' / 'retry_render_candidate_003.json').is_file(),
+        )
+
+    # 7. Backoff is recorded by the injected sleep function, never slept for real.
+    def test_backoff_recorded_not_slept_in_tests(self):
+        sleeps = []
+        with (
+            patch('subtitle.core.renderer_adapter.subprocess.run') as mock_run,
+            patch('subtitle.core.orchestrator.run_qc') as mock_qc,
+        ):
+            self._mock_render_fail_then_succeed(mock_run, fail_count=2)
+            self._mock_qc_pass(mock_qc)
+            result = self.run_job(auto_mode=True, sleep_fn=sleeps.append)
+
+            self.assertTrue(result.success)
+            self.assertEqual(result.final_state, 'READY_FOR_REVIEW')
+            self.assertEqual(mock_run.call_count, 3)
+            self.assertEqual(len(sleeps), 2)
+            self.assertGreaterEqual(sleeps[0], 2.0)
+            self.assertLessEqual(sleeps[0], 3.0)
+            self.assertGreaterEqual(sleeps[1], 4.0)
+            self.assertLessEqual(sleeps[1], 5.0)
 
 
 if __name__ == '__main__':
