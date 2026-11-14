@@ -19,12 +19,12 @@ Date: 2026-11-11.
 | S-06 | At most 2 additional retries; every attempt auditable; revoked / unsafe / ambiguous are never retried | PASS | C-14–C-18 PASS in `threat-matrix.csv`; single quota formula at `retry.py:295` (`attempt_counts.get(key, 0) < (1 + retry_allowance)`) |
 | S-07 | Source is never overwritten; nothing is shared / published / exported outside the approved destination | PASS | D-06 + D-07 + D-10 + E-10 PASS in `threat-matrix.csv` |
 | S-08 | Synthetic offline tests show reject + happy path; old regressions still pass; NOT_RUN list is complete | PASS | Full suite 189/189 + 6/6 (`run-log-phase2.txt`, `run-log-foundation.txt`); viralpop baseline 132 pass / 0 fail / 10 error (all 10 = missing external fixture files, see review.md section 4); styles script run exit 0 (`run-log-styles.txt`); NOT_RUN NR-01–NR-12 listed in `review.md` section 8 |
-| S-09 | Independent two-axis review; no merge of main until Philip approves + evidence is checked | PARTIAL | Axis 1 signed by ChatGPT on 2026-11-11 (Philip ordered it himself, not waiting for the Codex reset; Bean re-verified every claim against real files — `review.md` §13). Axis 2 signed as FALLBACK by Bean's team on 2026-11-11 ("not fully independent", P1-3) because AGY quota is exhausted until ~14 Nov 11:15; no AGY review exists yet. A fully independent Axis 2 re-review is still outstanding. The Draft PR must stay a draft and must not be merged until Philip approves the merge separately. |
+| S-09 | Independent two-axis review; no merge of main until Philip approves + evidence is checked | PARTIAL | Axis 1 signed by ChatGPT on 2026-11-11 (Philip ordered it himself, not waiting for the Codex reset; Bean re-verified every claim against real files — `review.md` §13). Axis 2 signed as FALLBACK by Bean's team on 2026-11-11 ("not fully independent", P1-3) because AGY quota is exhausted until ~14 Nov 11:15; no AGY review exists yet. A fully independent Axis 2 re-review was done by Codex on 2026-11-12 (main 52d4a40) but found a new P0 (D-01) and a new P1 (C-18), so P1-3 cannot be closed and S-09 stays PARTIAL. PR #10 was merged only after Philip's separate approval (merge commit 52d4a40); any further merge still needs his separate approval. |
 
 ## Result
 
 8 of 9 items PASS. S-09 is PARTIAL (Axis 1 done; Axis 2 fallback only — a fully independent Axis 2 review is still outstanding until AGY resets ~14 Nov 11:15 and re-reviews the whole axis).
-The verdict in `review.md` is NO-GO (P0 = 1, P1 = 4, P2 = 10) and therefore does not depend on S-09 completing.
+The verdict in `review.md` is NO-GO (P0 = 2, P1 = 5, P2 ≈ 40 — updated 2026-11-15 after the independent Codex Axis 2 review) and therefore does not depend on S-09 completing.
 
 ## Notes
 
