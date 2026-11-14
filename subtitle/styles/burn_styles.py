@@ -20,8 +20,8 @@ Safe zone (locked 2026-11-04): strip y 1100-1440 in a 1080x1920 frame,
 bottom margin 520px, right margin 140px. Text is drawn per WORD (never per
 character) so Thai vowels/tone marks are never split from their word.
 Chunks are 3-5 syllables (same rule as the approved samples). Outputs are
-new files; it never overwrites an existing clip. No ffmpeg subtitles filter
-is used anywhere - subtitles are PIL strips overlaid with ffmpeg.
+refused when they already exist unless --overwrite is given. No ffmpeg
+subtitles filter is used anywhere - subtitles are PIL strips overlaid with ffmpeg.
 
 Usage:
   burn_styles.py --style karaoke|editorial|highlighter|reveal|underline|minimal \
@@ -476,11 +476,21 @@ def main():
     ap.add_argument('--script', required=True)
     ap.add_argument('--mfa', required=True)
     ap.add_argument('--out', required=True)
+    ap.add_argument('--overwrite', action='store_true',
+                    help='allow replacing existing output files')
     ap.add_argument('--syllable-chunks', action='store_true',
                     help='re-chunk script lines into 3-5 syllable chunks')
     ap.add_argument('--fps', type=int, default=30)
     ap.add_argument('--crf', type=int, default=18)
     a = ap.parse_args()
+    proto_path = Path(a.out + '.proto.json')
+    if not a.overwrite:
+        for output_path in (Path(a.out), proto_path):
+            if output_path.exists() or output_path.is_symlink():
+                raise SystemExit(
+                    f'refusing to overwrite: {output_path} already exists '
+                    '(pass --overwrite to replace it)'
+                )
     script = Path(a.script).read_text(encoding='utf-8')
     mfa = json.loads(Path(a.mfa).read_text(encoding='utf-8'))
     phrases = load_phrases(script, mfa['words'])
@@ -489,7 +499,7 @@ def main():
         print('syllable chunks:', len(phrases))
         for p in phrases:
             print(f"  {p['syllables']} syl {p['start']:.2f}-{p['end']:.2f}s {p['text']}", flush=True)
-    Path(a.out + '.proto.json').write_text(
+    proto_path.write_text(
         json.dumps({'style': a.style, 'phrases': phrases}, ensure_ascii=False, indent=1),
         encoding='utf-8')
     dur = float(subprocess.check_output(['ffprobe', '-v', 'error', '-show_entries',

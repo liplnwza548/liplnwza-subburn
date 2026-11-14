@@ -3,6 +3,7 @@
 import json
 from datetime import datetime, timezone
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -400,6 +401,52 @@ class RendererAdapterTests(unittest.TestCase):
         self.assertEqual(result.exit_code, 0)
         self.assertIsNone(result.output_sha256)
         self.assertEqual(result.error_message, 'missing or empty candidate output')
+
+    def _assert_renderer_temp_cleanup(self, returncode: int) -> None:
+        preexisting_dirs = []
+        for prefix in ('chipstrip-', 'protostrip-'):
+            path = Path(tempfile.mkdtemp(prefix=f'{prefix}adapter-existing-', dir='/tmp'))
+            self.addCleanup(shutil.rmtree, path, ignore_errors=True)
+            marker = path / 'keep.txt'
+            marker.write_bytes(b'pre-existing')
+            preexisting_dirs.append((path, marker))
+
+        created_dirs = []
+
+        def fake_run(*args, **kwargs):
+            for prefix in ('chipstrip-', 'protostrip-'):
+                path = Path(tempfile.mkdtemp(prefix=f'{prefix}adapter-created-', dir='/tmp'))
+                self.addCleanup(shutil.rmtree, path, ignore_errors=True)
+                (path / 'temporary.txt').write_bytes(b'temporary')
+                created_dirs.append(path)
+            if returncode == 0:
+                self.candidate_output_path.write_bytes(b'candidate video')
+            return Mock(
+                returncode=returncode,
+                stdout='',
+                stderr='' if returncode == 0 else 'renderer failed',
+            )
+
+        with patch('subtitle.core.renderer_adapter.subprocess.run', side_effect=fake_run):
+            result = execute_renderer(
+                command=('python', 'fake.py'),
+                expected_output_path=self.candidate_output_path,
+                timeout_seconds=10,
+            )
+
+        self.assertEqual(result.success, returncode == 0)
+        self.assertEqual(len(created_dirs), 2)
+        for path in created_dirs:
+            self.assertFalse(path.exists())
+        for path, marker in preexisting_dirs:
+            self.assertTrue(path.is_dir())
+            self.assertEqual(marker.read_bytes(), b'pre-existing')
+
+    def test_execute_renderer_cleans_new_temp_dirs_after_success(self) -> None:
+        self._assert_renderer_temp_cleanup(returncode=0)
+
+    def test_execute_renderer_cleans_new_temp_dirs_after_failure(self) -> None:
+        self._assert_renderer_temp_cleanup(returncode=1)
 
 
 if __name__ == '__main__':
