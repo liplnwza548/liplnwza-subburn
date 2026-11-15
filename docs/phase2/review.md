@@ -85,12 +85,12 @@ P0-A1-01 กับ P1-A1-01 ต้องแก้ที่โค้ด/เอก
 | ตัวนับ | จำนวน |
 |---|---|
 | แถวตารางภัยคุกคามทั้งหมด | 77 แถว (A 20, B 14, C 18, D 12, E 13) |
-| แถวที่ PASS | 75 แถว |
-| แถวที่ FAIL | 2 แถว (E-09 — แก้จาก PASS เป็น FAIL ตอนลงลายเซ็นแกน 1 เพราะ inventory ที่แถวนี้อ้างไม่ครบ: grep ของ inventory ครอบคลุมแค่ `subtitle/core/` + `subtitle/adapters/` ทั้งที่แผน §6.1 N-03 สั่ง grep ทั้งต้นไม้ `subtitle/` — เส้นทางที่ 3 `burn_styles.py` อยู่นอกขอบเขตที่ grep ไว้ ดู P0-A1-01 ในหัวข้อ 9; **D-01 — แก้จาก PASS เป็น FAIL ตอนลงลายเซ็นแกน 2 อิสระ 2026-11-15 เพราะเทสต์ที่แถวนี้อ้างตรวจแค่ `resolve_source()` ไม่ได้ตรวจ `deliver_review()` ดู D-01 ในหัวข้อ 9; แถวอื่นยัง PASS เหมือนเดิม) |
+| แถวที่ PASS | 76 แถว |
+| แถวที่ FAIL | 1 แถว (E-09 — แก้จาก PASS เป็น FAIL ตอนลงลายเซ็นแกน 1 เพราะ inventory ที่แถวนี้อ้างไม่ครบ: grep ของ inventory ครอบคลุมแค่ `subtitle/core/` + `subtitle/adapters/` ทั้งที่แผน §6.1 N-03 สั่ง grep ทั้งต้นไม้ `subtitle/` — เส้นทางที่ 3 `burn_styles.py` อยู่นอกขอบเขตที่ grep ไว้ ดู P0-A1-01 ในหัวข้อ 9; **D-01 ปิดแล้วโดย PR #13 (merge 2026-11-15, `e95f21f`) — แถวนี้เป็น PASS ใน `threat-matrix.csv` แล้ว**; แถวอื่นยัง PASS เหมือนเดิม) |
 | แถวที่ NOT_RUN | 0 แถว |
-| P0 blocker ที่เจอ | **2 ข้อ** (P0-A1-01 — เส้นทางเรนเดอร์ที่ 3 `burn_styles.py` main() นอก inventory — กับ D-01 — `deliver_review()` ไม่ตรวจ symlink — ดูหัวข้อ 9) |
+| P0 blocker ที่เจอ | **1 ข้อ** (P0-A1-01 — เส้นทางเรนเดอร์ที่ 3 `burn_styles.py` main() นอก inventory — D-01 ปิดแล้วโดย PR #13 ดูหัวข้อ 9) |
 | P1 blocker ที่เจอ | **5 ข้อ** (P1-1 E-02 + P1-2 G1 + P1-A1-01 `burn_styles.py` ทิ้ง temp `protostrip-*` + P1-3 ทางสำรองแกน 2 + C-18 retry ใช้ค่า `now` เดียวกันทั้ง run — ดูหัวข้อ 9) |
-| P2 observation | **≈40 ข้อ** (ของเก่าที่ยังเปิด O-01 + O-02 + G2 + ส่วนที่เหลือของ F-AX2-1 — บวก ~36 ข้อใหม่จากการตรวจแกน 2 อิสระ — ดูหัวข้อ 10 ที่อธิบายวิธีนับไว้) |
+| P2 observation | **≈39 ข้อ** (ของเก่าที่ยังเปิด O-02 + G2 + ส่วนที่เหลือของ F-AX2-1 — บวก ~36 ข้อใหม่จากการตรวจแกน 2 อิสระ; O-01 ปิดแล้วในงาน resume นี้ — ดูหัวข้อ 10) |
 
 - แยกตามหลักฐาน: มีเทสต์อยู่แล้ว (รันซ้ำ) 64 แถว / เทสต์ใหม่ 7 แถว /
   ตรวจด้วยมือ (grep/git) 6 แถว = 77 แถว (ตรงกับแผนที่แก้แล้ว C4)
@@ -507,14 +507,14 @@ NR-01/02/03/08/09/10/11 เขียนแค่ "ตั๋วหลัง Phase
 
 ## 10. Observations (P2 ทุกข้อ)
 
-**วิธียอด P2 ≈ 40 (แก้ตอนลงลายเซ็นแกน 2 อิสระ 2026-11-15 — อ่านก่อนนับ):**
+**วิธียอด P2 ≈ 39 (แก้หลังปิด O-01 2026-11-15 — อ่านก่อนนับ):**
 ยอดเดิม 10 ข้อ (O-01 + O-02 + G2 + F-AX2-1–4 + P2-A1-01–03) นั้น
 **P2-A1-01/02/03 แก้แล้วใน W0** (ดูเครื่องหมาย RESOLVED ท้ายแต่ละข้อ)
 และ **F-AX2-2/F-AX2-3 แก้แล้ว** (log รันใหม่ที่ `8187cb9` + อ้างอิง Spec
 แก้แล้ว) ส่วน **F-AX2-4 ไม่พบข้ออ้างเดิมใน main** (PART_4 ตรวจแล้ว —
 `review.md` §1 ไม่เคยกล่าวว่า mitigation ของ P1 มีวันกำหนดครบ) —
-ของเก่าที่ยังเปิดอยู่จริงจึงเหลือ O-01 + O-02 + G2 + ส่วนที่เหลือของ
-F-AX2-1 (แผน §5.3 ยังคาด counts=3) = 4 ข้อ — บวกข้อใหม่ ~36 ข้อจาก
+ของเก่าที่ยังเปิดอยู่จริงจึงเหลือ O-02 + G2 + ส่วนที่เหลือของ
+F-AX2-1 (แผน §5.3 เคยคาด counts=3; แก้แล้วในงานนี้) = 3 ข้อ — บวกข้อใหม่ ~36 ข้อจาก
 การตรวจแกน 2 อิสระ (ดูหัวข้อย่อยท้ายหัวข้อนี้) รวมเป็น **≈40 ข้อ** —
 ยอดนี้เป็น**โดยประมาณ** เพราะข้อที่ Codex อ้างหลายข้อซ้อนกันข้ามชิ้น
 (เช่น C-16/C-18 มีทั้งใน PART_1b, PART_2 และ PART_4) และบีนรวมข้อซ้ำแล้ว
@@ -529,30 +529,25 @@ P0/P1 ส่วนใหญ่เป็น "ไม่มีเทสต์ที
 จริงแค่ D-01 กับ C-18 (ดูหัวข้อ 9) — รายละเอียดการตรวจซ้ำของบีนอยู่ใน
 Job Pack (`P2-010_AXIS2_Codex_review_PART_*.md` + บันทึกการตรวจซ้ำ)
 
-### O-01 — entrypoint ต่องานที่ค้างกลางทางไม่ได้ (C-16)
+### O-01 — mid-pipeline resume (RESOLVED)
 
-- **เจออะไร:** แผน P2-010 คาดไว้ว่าถ้าบันทึก counts=2 ลง checkpoint แล้วเรียก
-  entrypoint ใหม่ให้ล้มอีก จะได้ counts=3 แล้วหมดโควต้า — **ผลจริงไม่เป็นแบบนั้น:**
-  entrypoint ปฏิเสธงานที่อยู่เลย INTAKE ไปแล้วทันที (`AUDIT_CORRUPT`,
-  `final_state=FAILED_JOB`, render 0 ครั้ง) เพราะ `_step_intake` บังคับว่า
-  checkpoint ต้องอยู่ที่สถานะ INTAKE + revision 1 เท่านั้น
-  (พิสูจน์ด้วยเทสต์ `test_quota_preserved_but_entrypoint_cannot_resume_mid_pipeline`)
-- **ทำไมยังให้ตาราง C-16 ผ่าน:** ภัยที่แถวนี้กันคือ "ตัวนับรีเซ็ตเมื่อ restart" —
-  **ตัวนับไม่เคยรีเซ็ตเลย** (อยู่ 2 เท่าเดิมบน disk) และไม่มี render เกิดขึ้น
-  คุณสมบัติด้านความปลอดภัยครบ ส่วนที่ขาดคือ "ความสามารถต่องาน"
-  ไม่ใช่ "การป้องกัน"
-- **ทำไมถึงเป็น P2 ไม่ใช่ P1:** การปฏิเสธเป็นแบบ fail-closed โดยออกแบบ
-  (ไม่ใช่การป้องกันที่หายหรือทำงานผิด) ผลกระทบคือเรื่องปฏิบัติการ —
-  งานที่เครื่องดับกลางทางต้องเริ่มใหม่ด้วย job + grant ใหม่ — ไม่ใช่เรื่อง
-  ความปลอดภัย
-- **Mitigation:** บันทึกพฤติกรรมนี้ไว้ในเอกสาร (ตรงนี้) + ตั๋วแยกหลัง Phase 2
-  ว่าจะเอาทางต่องานกลางทางหรือไม่ (ถ้าเอาต้องออกแบบให้ชัด ไม่ใช่แอบแก้
-  `_step_intake`)
-- **เจ้าของ:** ฟิลิป (สั่งแยก) — **กำหนด:** ตั๋วหลัง Phase 2 ยังไม่กำหนดวัน
-- **หมายเหตุเรื่องชื่อเทสต์:** แผน P2-010 §5.3 ใช้ชื่อ
-  `test_quota_exhausted_across_restart_via_orchestrator` แต่ชื่อที่
-  implement จริงคือ `test_quota_preserved_but_entrypoint_cannot_resume_mid_pipeline`
-  (สื่อผลจริงได้ดีกว่า — บันทึกไว้ตรงนี้ให้ตรงกัน)
+- **แก้แล้ว:** เพิ่ม operator-invoked `resume_render_job(...)` พร้อม narrow v1
+  dispatch สำหรับ `AUTHORIZED`, `TRANSCRIBED`, `SCRIPT_EVIDENCE_CHECKED`,
+  `ALIGNED`, `RENDER_PERMITTED` และ `RENDERED` โดยตรวจ grant/status สด,
+  frozen bindings, source/input digests และ audit chain ก่อน dispatch
+- Resume เขียน `evidence/resume_{revision:03d}.json` แบบ atomic ก่อน dispatch;
+  transition ถัดไปอ้าง resume record ใน `reason`; attempt counts ใช้
+  checkpoint เดิมต่อเนื่อง. `RENDERED` ที่ candidate hash ตรงกับ successful
+  retry evidence ไป QC โดยไม่ render; candidate ที่ไม่ตรงถูกบันทึก ทิ้ง และ
+  render ใหม่เป็น attempt ที่นับเพิ่ม
+- `QC_EVALUATED` และสถานะ terminal/correction อื่นปฏิเสธด้วย
+  `RESUME_NOT_PERMITTED`. `_step_intake`, reducer, state set, checkpoint v1,
+  `intake.py` และ `audit.py` ไม่เปลี่ยน
+- เทสต์ C-16 เดิม `test_quota_preserved_but_entrypoint_cannot_resume_mid_pipeline`
+  คงเดิมและยังพิสูจน์ว่า plain rerun ปฏิเสธ `AUDIT_CORRUPT` โดยไม่ render
+  และไม่รีเซ็ต counts; เทสต์ resume ใหม่พิสูจน์เส้นทางต่อแยกต่างหาก
+- **เอกสาร:** แก้ P2-010 §5.3 ให้บันทึกผล C-16 จริง (counts คง 2 เพราะ
+  ไม่มี render) และเพิ่ม dispatch/candidate rule ใน Spec §6
 
 ### P2-A1-01 — `diff-check.txt` อ้าง staged set 9 ไฟล์ ทั้งที่ PR มี 10 ไฟล์ (แกน 1 เจอ; ส่วนหนึ่งซ้ำ F-AX2-2)
 
@@ -666,9 +661,10 @@ Job Pack (`P2-010_AXIS2_Codex_review_PART_*.md` + บันทึกการต
   (revocation view ไม่สด / connected-app scope / hash ไม่พิสูจน์
   ความถูกต้องเชิงคำ-เวลา — ยังเปิดอยู่), §12 พูดว่า "ยังขาดทุกข้อ"
   ทั้งที่ documented limitations มีอยู่แล้ว (ยังเปิดอยู่)
-- **กลุ่มที่ 4 — fixture/แผนไม่ตรงผลจริง (~2 ข้อ):** แผน §5.3 ยังคาด
-  counts=3 สำหรับ C-16 (ผลจริงคือ AUDIT_CORRUPT + counts คง 2 —
-  ส่วนที่เหลือของ F-AX2-1), เทสต์ C-18 ไม่ได้ตั้ง fixture ตรง expiry edge
+- **กลุ่มที่ 4 — fixture/แผนไม่ตรงผลจริง (~1 ข้อที่ยังเปิด):** แผน §5.3
+  เคยคาด counts=3 สำหรับ C-16; แก้แล้วในงาน O-01 ตามผลจริง
+  (`AUDIT_CORRUPT` + counts คง 2 เมื่อใช้ plain entrypoint). เทสต์ C-18
+  ยังไม่ได้ตั้ง fixture ตรง expiry edge
   (grant หมดอายุอีก 1 ชม. — แยกจากพฤติกรรม single-now ที่เป็น C-18 ใน
   หัวข้อ 9)
 - **กลุ่มที่ 5 — ข้อสังเกตอื่น (~2 ข้อ):** `non-regression.md` S-09
@@ -730,8 +726,9 @@ Job Pack (`P2-010_AXIS2_Codex_review_PART_*.md` + บันทึกการต
   ชุดทดสอบเต็มผ่านบน branch
 - **G4 (owner_id ผิดตัวเดียว):** ปิดแล้ว — เทสต์ D-02
   (`test_owner_id_off_by_one_rejected`) พิสูจน์ว่าปฏิเสธก่อนเขียนแม้แต่ 1 ไบต์
-- **G5 (หมดโควต้า retry ข้าม restart):** ปิดในส่วนความปลอดภัยแล้ว — เทสต์ C-16
-  พิสูจน์ว่าตัวนับไม่เคยรีเซ็ต (ดูหัวข้อ 10 O-01 สำหรับส่วนความสามารถที่ยังขาด)
+- **G5 (หมดโควต้า retry ข้าม restart):** ปิด — เทสต์ C-16 เดิมยืนยันว่า
+  plain rerun ไม่รีเซ็ต counts; เทสต์ O-01 เพิ่มเติมยืนยันว่า resume ใช้
+  counts เดิมและไม่ render attempt ที่ 4 เมื่อ quota หมด
 
 ## 12. เกณฑ์ promotion — "พร้อม" หมายถึงอะไร (Spec §14 — ห้ามอ้างเกิน)
 
@@ -810,10 +807,10 @@ grep -rn groq subtitle/core/gates.py subtitle/core/orchestrator.py subtitle/core
    `discover -s tests -v` คำสั่งเดียว — คำสั่งนี้รันแค่ 6 เทสต์ Foundation
    แล้วขึ้น OK (กับดัก false-pass ตาม C2) P2-010 **ไม่ได้ทำตาม**บรรทัดนั้น
    แต่ทำตาม §5.2 ที่แก้แล้ว (รัน 2 คำสั่ง) — หลักฐานอยู่ในหัวข้อ 4
-2. แผน §4.3 C-16 คาดว่า entrypoint จะต่องานที่ค้างกลางทางได้ (counts=3
-   แล้วหมดโควต้า) — ผลจริงคือ entrypoint ปฏิเสธงานที่เลย INTAKE ไปแล้ว
-   (`AUDIT_CORRUPT`) ดูหัวข้อ 10 O-01 — ตาราง C-16 ให้ PASS เพราะภัยที่กัน
-   (ตัวนับรีเซ็ต) ไม่เกิดขึ้นจริง
+2. แผน §4.3 C-16 เคยคาดว่า plain entrypoint จะต่องานที่ค้างกลางทางได้
+   (counts=3 แล้วหมดโควต้า) — ผลจริงคือ plain entrypoint ปฏิเสธงานที่เลย
+   INTAKE ไปแล้ว (`AUDIT_CORRUPT`) และ counts คงเดิม; P2-010 §5.3 แก้ตาม
+   ส่วนการ resume ที่รองรับแล้วมี entrypoint แยกตามหัวข้อ 10 O-01
 
 **ไฟล์หลักฐานทั้งหมด:** `docs/phase2/evidence/` — `threat-matrix.csv`
 (77 แถว), `run-log-phase2.txt`, `run-log-foundation.txt`,
