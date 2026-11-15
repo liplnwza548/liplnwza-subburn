@@ -1,15 +1,16 @@
-"""P2-010 adversarial tests (plan sections 4 / 5.3, 7 new tests).
+"""P2-010 adversarial tests (plan sections 4 / 5.3).
 
 Offline only, synthetic data only, test keys labelled ``test-key-...``.
 Each test names the threat-matrix row it proves in its docstring.
 
-The seven tests cover the rows that had no test yet:
+The tests cover the rows that had no test yet:
 
 - A-20 clock boundary (grant expiry edge)
 - B-13 forged human-listening claim (PASSED must be rejected)
 - C-16 retry quota across restart, driven through the real entrypoint
 - C-18 ``now`` must not change mid retry loop
 - D-01 fake Drive parent that is a symlink
+- D-01 delivery path and output symlink / existing-output rejection
 - D-02 review destination with owner_id off by one character
 - E-02 direct CLI bypass proof (the CLIs work without the orchestrator)
 
@@ -38,7 +39,7 @@ from unittest.mock import Mock, patch
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from pythainlp import word_tokenize
 
-from subtitle.adapters import AdapterError, ColabAdapter
+from subtitle.adapters import AdapterError, ColabAdapter, LocalAdapter
 from subtitle.core.audit import load_checkpoint, save_checkpoint
 from subtitle.core.authorization import Decision, canonical, verify
 from subtitle.core.evidence import (
@@ -528,6 +529,56 @@ class AdversarialTests(unittest.TestCase):
         self.assertNotIn('datetime.now(', source)
         self.assertNotIn('time.time(', source)
 
+    # C-18 boundary fixture: the grant expires after the first render
+    # attempt and before its retry. Option (a) deliberately preserves
+    # the run-start ``now``, so the retry still passes authorization.
+    def test_expiry_between_attempts_retry_uses_run_start_now(self):
+        expiry = NOW + timedelta(seconds=1)
+        simulated_time = [NOW]
+        render_times = []
+        seen_nows = []
+        seen_wall_times = []
+        real_verify = verify
+        calls = {'n': 0}
+
+        def recording_verify(*args, **kwargs):
+            seen_nows.append(kwargs.get('now', args[5] if len(args) > 5 else None))
+            seen_wall_times.append(simulated_time[0])
+            return real_verify(*args, **kwargs)
+
+        def simulated_render(command, **kwargs):
+            calls['n'] += 1
+            render_times.append(simulated_time[0])
+            if calls['n'] == 1:
+                simulated_time[0] = expiry + timedelta(seconds=1)
+                return Mock(returncode=1, stdout='', stderr='synthetic first-attempt failure')
+            out_idx = list(command).index('--out') + 1
+            out_path = Path(command[out_idx])
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            out_path.write_bytes(b'fake-candidate-mp4-bytes' * 100)
+            return Mock(returncode=0, stdout='', stderr='')
+
+        with (
+            patch('subtitle.core.renderer_adapter.subprocess.run', side_effect=simulated_render) as mock_run,
+            patch('subtitle.core.orchestrator.run_qc') as mock_qc,
+            patch('subtitle.core.orchestrator.verify', side_effect=recording_verify),
+        ):
+            self._mock_qc_pass(mock_qc)
+            result = self.run_job(
+                grant=self.make_grant(expires_at=ts(expiry)),
+                auto_mode=True,
+                sleep_fn=lambda _s: None,
+            )
+
+        self.assertTrue(result.success)
+        self.assertEqual(result.final_state, 'READY_FOR_REVIEW')
+        self.assertEqual(mock_run.call_count, 2)
+        self.assertEqual(render_times[0], NOW)
+        self.assertGreaterEqual(render_times[1], expiry)
+        self.assertTrue(any(attempt_time > expiry for attempt_time in seen_wall_times))
+        self.assertGreaterEqual(len(seen_nows), 2)
+        self.assertTrue(all(seen == NOW for seen in seen_nows))
+
     # D-01: a fake Drive parent that is a symlink must be rejected.
     # safe_resolve_path rejects symlink components, so resolving the
     # source through the linked parent must fail on both roots and
@@ -575,6 +626,179 @@ class AdversarialTests(unittest.TestCase):
             trusted_source_root=self.source_root,
         )
         self.assertEqual(resolved, real_drive / 'parent-1' / 'clip.mp4')
+
+    def _delivery_artifact(self):
+        artifact = self.root / 'candidate.mp4'
+        artifact.write_bytes(b'synthetic-delivery-candidate')
+        return artifact
+
+    def _delivery_kwargs(self, artifact):
+        destination = {
+            'provider': 'drive',
+            'id': 'parent-1',
+            'owner_id': 'philip',
+        }
+        return dict(
+            job_id='job-1',
+            artifact_path=artifact,
+            destination=destination,
+            expected_destination=dict(destination),
+            target_state='READY_FOR_REVIEW',
+            evidence_id='ev_qc_job-1',
+            now=NOW_ISO,
+        )
+
+    def _colab_delivery_adapter(self):
+        return ColabAdapter(
+            fake_drive_root=self.fake_drive,
+            fake_drive_parent_id='parent-1',
+            fake_drive_credential=TEST_KEY,
+        )
+
+    def _local_delivery_adapter(self):
+        return LocalAdapter(base_staging_dir=self.base_staging_dir)
+
+    # D-01b: delivery must reject a symlink at the fake Drive parent
+    # itself, before writing outside the authorized root. The regular
+    # parent control still delivers normally.
+    def test_drive_delivery_parent_symlink_rejected(self):
+        artifact = self._delivery_artifact()
+        outside = self.root / 'outside-drive'
+        outside.mkdir()
+        parent = self.fake_drive / 'parent-1'
+        parent.rmdir()
+        parent.symlink_to(outside, target_is_directory=True)
+        adapter = self._colab_delivery_adapter()
+
+        with self.assertRaises(AdapterError) as ctx:
+            adapter.deliver_review(**self._delivery_kwargs(artifact))
+        self.assertEqual(ctx.exception.code, 'ADAPTER_SYMLINK_REJECTED')
+        self.assertTrue(parent.is_symlink())
+        self.assertEqual(list(self.fake_drive.iterdir()), [parent])
+        self.assertFalse((outside / 'OFFLINE-candidate.mp4').exists())
+
+        parent.unlink()
+        parent.mkdir()
+        receipt = adapter.deliver_review(**self._delivery_kwargs(artifact))
+        self.assertTrue(receipt.offline)
+        self.assertEqual(
+            (parent / 'OFFLINE-candidate.mp4').read_bytes(), artifact.read_bytes(),
+        )
+
+    # D-01c: a symlink at the per-job Local delivery directory must be
+    # rejected before writing outside staging. A regular directory works.
+    def test_local_delivery_job_symlink_rejected(self):
+        artifact = self._delivery_artifact()
+        self.base_staging_dir.mkdir()
+        delivery_root = self.base_staging_dir / 'delivery'
+        delivery_root.mkdir()
+        outside = self.root / 'outside-job'
+        outside.mkdir()
+        job_dir = delivery_root / 'job-1'
+        job_dir.symlink_to(outside, target_is_directory=True)
+        adapter = self._local_delivery_adapter()
+
+        with self.assertRaises(AdapterError) as ctx:
+            adapter.deliver_review(**self._delivery_kwargs(artifact))
+        self.assertEqual(ctx.exception.code, 'ADAPTER_SYMLINK_REJECTED')
+        self.assertTrue(job_dir.is_symlink())
+        self.assertFalse((outside / 'OFFLINE-candidate.mp4').exists())
+
+        job_dir.unlink()
+        job_dir.mkdir()
+        receipt = adapter.deliver_review(**self._delivery_kwargs(artifact))
+        self.assertTrue(receipt.offline)
+        self.assertEqual(
+            (job_dir / 'OFFLINE-candidate.mp4').read_bytes(), artifact.read_bytes(),
+        )
+
+    # D-01c: the shared Local delivery directory is checked as well as
+    # the per-job directory, and the ordinary path remains usable.
+    def test_local_delivery_root_symlink_rejected(self):
+        artifact = self._delivery_artifact()
+        self.base_staging_dir.mkdir()
+        outside = self.root / 'outside-delivery-root'
+        outside.mkdir()
+        delivery_root = self.base_staging_dir / 'delivery'
+        delivery_root.symlink_to(outside, target_is_directory=True)
+        adapter = self._local_delivery_adapter()
+
+        with self.assertRaises(AdapterError) as ctx:
+            adapter.deliver_review(**self._delivery_kwargs(artifact))
+        self.assertEqual(ctx.exception.code, 'ADAPTER_SYMLINK_REJECTED')
+        self.assertTrue(delivery_root.is_symlink())
+        self.assertFalse((outside / 'job-1' / 'OFFLINE-candidate.mp4').exists())
+
+        delivery_root.unlink()
+        delivery_root.mkdir()
+        receipt = adapter.deliver_review(**self._delivery_kwargs(artifact))
+        self.assertTrue(receipt.offline)
+        self.assertEqual(
+            (delivery_root / 'job-1' / 'OFFLINE-candidate.mp4').read_bytes(),
+            artifact.read_bytes(),
+        )
+
+    # D-01d: neither adapter follows a symlink at the final OFFLINE
+    # filename. After removing it, both regular delivery controls succeed.
+    def test_delivery_output_symlink_rejected(self):
+        artifact = self._delivery_artifact()
+        outside = self.root / 'outside-output.mp4'
+        outside.write_bytes(b'preserve-existing-target')
+        colab_parent = self.fake_drive / 'parent-1'
+        local_parent = self.base_staging_dir / 'delivery' / 'job-1'
+        local_parent.mkdir(parents=True)
+        colab_out = colab_parent / 'OFFLINE-candidate.mp4'
+        local_out = local_parent / 'OFFLINE-candidate.mp4'
+        colab_out.symlink_to(outside)
+        local_out.symlink_to(outside)
+        colab = self._colab_delivery_adapter()
+        local = self._local_delivery_adapter()
+        kwargs = self._delivery_kwargs(artifact)
+
+        for adapter in (colab, local):
+            with self.subTest(adapter=adapter.name):
+                with self.assertRaises(AdapterError) as ctx:
+                    adapter.deliver_review(**kwargs)
+                self.assertEqual(ctx.exception.code, 'ADAPTER_SYMLINK_REJECTED')
+        self.assertEqual(outside.read_bytes(), b'preserve-existing-target')
+
+        colab_out.unlink()
+        local_out.unlink()
+        colab.deliver_review(**kwargs)
+        local.deliver_review(**kwargs)
+        self.assertEqual(colab_out.read_bytes(), artifact.read_bytes())
+        self.assertEqual(local_out.read_bytes(), artifact.read_bytes())
+
+    # D-01e: an existing regular OFFLINE file is refused in both
+    # adapters and is left byte-for-byte intact; a clean destination works.
+    def test_delivery_existing_output_rejected(self):
+        artifact = self._delivery_artifact()
+        existing = b'preserve-existing-offline-output'
+        colab_out = self.fake_drive / 'parent-1' / 'OFFLINE-candidate.mp4'
+        local_out = (
+            self.base_staging_dir / 'delivery' / 'job-1' / 'OFFLINE-candidate.mp4'
+        )
+        local_out.parent.mkdir(parents=True)
+        colab_out.write_bytes(existing)
+        local_out.write_bytes(existing)
+        colab = self._colab_delivery_adapter()
+        local = self._local_delivery_adapter()
+        kwargs = self._delivery_kwargs(artifact)
+
+        for adapter in (colab, local):
+            with self.subTest(adapter=adapter.name):
+                with self.assertRaises(AdapterError) as ctx:
+                    adapter.deliver_review(**kwargs)
+                self.assertEqual(ctx.exception.code, 'ADAPTER_OUTPUT_EXISTS')
+        self.assertEqual(colab_out.read_bytes(), existing)
+        self.assertEqual(local_out.read_bytes(), existing)
+
+        colab_out.unlink()
+        local_out.unlink()
+        colab.deliver_review(**kwargs)
+        local.deliver_review(**kwargs)
+        self.assertEqual(colab_out.read_bytes(), artifact.read_bytes())
+        self.assertEqual(local_out.read_bytes(), artifact.read_bytes())
 
     # D-02: a destination that is almost right but has owner_id off
     # by one character must be denied BEFORE a single byte is

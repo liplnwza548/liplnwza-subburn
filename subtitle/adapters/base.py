@@ -40,7 +40,9 @@ from typing import Any, Protocol, runtime_checkable
 class AdapterError(ValueError):
     """Adapter-local failure. ``code`` is adapter scope only, e.g.
     ``ADAPTER_ROOT_MISSING`` / ``ADAPTER_DESTINATION_MISMATCH`` /
-    ``ADAPTER_NOT_READY`` / ``ADAPTER_ROOT_UNSAFE``.
+    ``ADAPTER_NOT_READY`` / ``ADAPTER_ROOT_UNSAFE`` /
+    ``ADAPTER_SYMLINK_REJECTED`` (a delivery path contains a symlink) /
+    ``ADAPTER_OUTPUT_EXISTS`` (the offline delivery target already exists).
 
     These codes are NOT system deny codes: the adapter has no authority
     to decide authorization, so its codes never flow into a grant
@@ -129,6 +131,10 @@ class PlatformAdapter(Protocol):
     - ``deliver_review`` takes ``expected_destination`` (the authorized
       review destination from the grant); without it, rule A4 could not
       be checked at all.
+
+    ``deliver_review`` also rejects symlink components in its delivery
+    path and refuses to overwrite an existing OFFLINE target. The path
+    check is subject to the documented check-to-write TOCTOU limitation.
     """
 
     name: str

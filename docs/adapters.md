@@ -35,7 +35,10 @@ never write a file, never touch a network. The result is a
 destination's `provider` + `id` + `owner_id` must all match the
 authorized review destination in the grant exactly. Mismatch means
 deny before even one byte is written. The job must be
-`READY_FOR_REVIEW`.
+`READY_FOR_REVIEW`. Before creating the destination directory, both
+adapters reject any symlink component in the delivery path. They also
+reject a symlink at the final `OFFLINE-...` path and refuse to overwrite
+an existing delivery target.
 
 **A5 — Source and output strictly separated.** The trusted source
 root and the staging root must not overlap or be parent/child of each
@@ -62,7 +65,9 @@ fails.
 # subtitle/adapters/base.py
 class AdapterError(ValueError): ...   # code: ADAPTER_ROOT_MISSING /
                                       # ADAPTER_DESTINATION_MISMATCH /
-                                      # ADAPTER_NOT_READY / ADAPTER_ROOT_UNSAFE
+                                      # ADAPTER_NOT_READY / ADAPTER_ROOT_UNSAFE /
+                                      # ADAPTER_SYMLINK_REJECTED /
+                                      # ADAPTER_OUTPUT_EXISTS
 @dataclass(frozen=True) class PlatformCapabilities:
     ffmpeg_available: bool
     ffprobe_available: bool
@@ -172,7 +177,16 @@ receipt is issued with `offline: True` and the delivered file named
 - **Pre-flight is only a first gate.** Passing it does not promise
   the render will succeed; the retry loop handles real failures.
 - **One `now` per run.** A grant expiring mid-loop is an accepted
-  limitation of this ticket (plan §3.3, assumption 2).
+  limitation of this ticket (plan §3.3, assumption 2). Re-verification
+  still uses the run-start `now`, so a retry can pass after the grant's
+  expiry if the expiry falls between attempts. Callers should issue a
+  grant with about 35 minutes of remaining validity for a job that may
+  use all three render attempts; this is guidance, not an enforced gate.
+- **Delivery path checks have a boundary.** The adapters check for
+  symlink components before creating the delivery directory and refuse
+  an existing or symlinked final output. A symlink could still be
+  introduced between the check and the write (TOCTOU), and these checks
+  do not constrain an agent with direct shell access.
 
 ## chip_burn `/tmp` peak (plan §4.5, decision D5)
 
