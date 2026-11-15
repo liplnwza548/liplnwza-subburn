@@ -80,6 +80,7 @@ import json
 import math
 from pathlib import Path
 import re
+import stat
 import time
 
 from subtitle.adapters.base import CapabilityReport, PlatformAdapter
@@ -93,15 +94,19 @@ from .audit import (
     atomic_write_file,
     atomic_write_json,
     load_checkpoint,
+    load_job_record,
     save_checkpoint,
 )
 from .authorization import Decision, verify
 from .evidence import (
     CheckRecord,
+    EvidenceError,
     EvidenceRecord,
     create_evidence_record,
+    load_evidence_record,
     save_evidence_record,
 )
+from .errors import RESUME_NOT_PERMITTED
 from .gates import (
     check_mfa_provenance,
     check_pre_render_gate,
@@ -386,6 +391,12 @@ def _deny_result(
         renderer_invoked=renderer_invoked,
         render_execution=render_execution,
     )
+
+
+def _with_resume_context(reason: str, resume_context: str | None) -> str:
+    if resume_context is None:
+        return reason
+    return f"{resume_context}: {reason}"
 
 
 def _advance(
@@ -713,6 +724,7 @@ def _step_transcript_g1(
     script_lines: list,
     transcript_tool_metadata: dict,
     now_iso: str,
+    resume_context: str | None = None,
 ) -> tuple[JobCheckpoint, tuple[str, ...]] | OrchestratorResult:
     job_dir = _job_dir(spec)
 
@@ -735,7 +747,7 @@ def _step_transcript_g1(
         actor='orchestrator',
         decision='TRANSCRIBED',
         now=now_iso,
-        reason='Transcription evidence attached',
+        reason=_with_resume_context('Transcription evidence attached', resume_context),
         job_dir=job_dir,
     )
     if new_checkpoint is None:
@@ -771,7 +783,7 @@ def _step_transcript_g1(
             actor='orchestrator',
             decision='DENIED',
             now=now_iso,
-            reason=gate.reason,
+            reason=_with_resume_context(gate.reason, resume_context),
             job_dir=job_dir,
         )
         return _deny_result(
@@ -794,7 +806,9 @@ def _step_transcript_g1(
         actor='orchestrator',
         decision='PASSED',
         now=now_iso,
-        reason='Gate G1 transcript evidence check passed',
+        reason=_with_resume_context(
+            'Gate G1 transcript evidence check passed', resume_context,
+        ),
         job_dir=job_dir,
     )
     if final_checkpoint is None:
@@ -810,6 +824,86 @@ def _step_transcript_g1(
     return (final_checkpoint, tuple(collected))
 
 
+def _step_g1_after_transcribed(
+    *,
+    spec: JobSpec,
+    checkpoint: JobCheckpoint,
+    transcript_data: dict,
+    script_text: str,
+    script_lines: list,
+    transcript_tool_metadata: dict,
+    now_iso: str,
+    resume_context: str,
+) -> tuple[JobCheckpoint, tuple[str, ...]] | OrchestratorResult:
+    """Resume G1 from TRANSCRIBED without repeating its completed transition."""
+    job_dir = _job_dir(spec)
+    _write_transcript_artifact(job_dir=job_dir, transcript_data=transcript_data)
+    gate = check_transcript_evidence(
+        spec=spec,
+        transcript_data=transcript_data,
+        script_text=script_text,
+        script_lines=script_lines,
+        tool_metadata=transcript_tool_metadata,
+        artifact_relpath='evidence/transcript_raw.json',
+        evidence_id=f"ev_g1_{spec.job_id}",
+        now=now_iso,
+    )
+    evidence_ids: tuple[str, ...] = ()
+    if gate.evidence is not None:
+        _save_gate_evidence(job_dir, gate.evidence)
+        evidence_ids = (gate.evidence.evidence_id,)
+
+    if not gate.passed:
+        blocked_checkpoint, _ = _advance(
+            checkpoint,
+            target_state='BLOCKED_NEEDS_REVIEW',
+            event_id=f"evt_block_g1_{spec.job_id}",
+            evidence_refs=(f"deny:{gate.deny_code}",),
+            actor='orchestrator',
+            decision='DENIED',
+            now=now_iso,
+            reason=_with_resume_context(gate.reason, resume_context),
+            job_dir=job_dir,
+        )
+        return _deny_result(
+            final_state='BLOCKED_NEEDS_REVIEW',
+            deny_code=gate.deny_code,
+            reason=gate.reason,
+            spec=spec,
+            checkpoint=(
+                blocked_checkpoint if blocked_checkpoint is not None else checkpoint
+            ),
+            evidence_ids=evidence_ids,
+        )
+
+    if gate.evidence is None:
+        raise OrchestratorError('G1 passed without evidence')
+
+    new_checkpoint, transition = _advance(
+        checkpoint,
+        target_state='SCRIPT_EVIDENCE_CHECKED',
+        event_id=f"evt_g1_{spec.job_id}",
+        evidence_refs=(gate.evidence.evidence_id,),
+        actor='orchestrator',
+        decision='PASSED',
+        now=now_iso,
+        reason=_with_resume_context(
+            'Gate G1 transcript evidence check passed', resume_context,
+        ),
+        job_dir=job_dir,
+    )
+    if new_checkpoint is None:
+        return _deny_result(
+            final_state=checkpoint.current_state,
+            deny_code=transition.reason,
+            reason=f"Transition to SCRIPT_EVIDENCE_CHECKED rejected: {transition.reason}",
+            spec=spec,
+            checkpoint=checkpoint,
+            evidence_ids=evidence_ids,
+        )
+    return (new_checkpoint, evidence_ids)
+
+
 def _step_mfa_g2(
     *,
     spec,
@@ -821,6 +915,7 @@ def _step_mfa_g2(
     script_text: str,
     mfa_tool_metadata: dict,
     now_iso: str,
+    resume_context: str | None = None,
 ) -> tuple[JobCheckpoint, EvidenceRecord, tuple[str, ...]] | OrchestratorResult:
     job_dir = _job_dir(spec)
     _write_mfa_artifact(job_dir=job_dir, mfa_artifact_bytes=mfa_artifact_bytes)
@@ -850,7 +945,7 @@ def _step_mfa_g2(
             actor='orchestrator',
             decision='DENIED',
             now=now_iso,
-            reason=gate.reason,
+            reason=_with_resume_context(gate.reason, resume_context),
             job_dir=job_dir,
         )
         return _deny_result(
@@ -873,7 +968,9 @@ def _step_mfa_g2(
         actor='orchestrator',
         decision='PASSED',
         now=now_iso,
-        reason='Gate G2 MFA provenance check passed',
+        reason=_with_resume_context(
+            'Gate G2 MFA provenance check passed', resume_context,
+        ),
         job_dir=job_dir,
     )
     if final_checkpoint is None:
@@ -902,6 +999,7 @@ def _step_reverify_g3(
     cues: list,
     mfa_evidence,
     now_iso: str,
+    resume_context: str | None = None,
 ) -> tuple[JobCheckpoint, tuple[str, ...]] | OrchestratorResult:
     job_dir = _job_dir(spec)
     fresh = verify(
@@ -934,7 +1032,9 @@ def _step_reverify_g3(
                 actor='orchestrator',
                 decision='REVOKED',
                 now=now_iso,
-                reason='Job grant was revoked by issuer before render',
+                reason=_with_resume_context(
+                    'Job grant was revoked by issuer before render', resume_context,
+                ),
                 job_dir=job_dir,
             )
             return _deny_result(
@@ -952,7 +1052,9 @@ def _step_reverify_g3(
             actor='orchestrator',
             decision='DENIED',
             now=now_iso,
-            reason=f"Fresh verification failed: {fresh.reason}",
+            reason=_with_resume_context(
+                f"Fresh verification failed: {fresh.reason}", resume_context,
+            ),
             job_dir=job_dir,
         )
         return _deny_result(
@@ -988,7 +1090,9 @@ def _step_reverify_g3(
                 actor='orchestrator',
                 decision='REVOKED',
                 now=now_iso,
-                reason='Job grant was revoked by issuer before render',
+                reason=_with_resume_context(
+                    'Job grant was revoked by issuer before render', resume_context,
+                ),
                 job_dir=job_dir,
             )
             return _deny_result(
@@ -1006,7 +1110,7 @@ def _step_reverify_g3(
             actor='orchestrator',
             decision='DENIED',
             now=now_iso,
-            reason=gate.reason,
+            reason=_with_resume_context(gate.reason, resume_context),
             job_dir=job_dir,
         )
         return _deny_result(
@@ -1029,7 +1133,9 @@ def _step_reverify_g3(
         actor='orchestrator',
         decision='PASSED',
         now=now_iso,
-        reason='Gate G3 pre-render check passed',
+        reason=_with_resume_context(
+            'Gate G3 pre-render check passed', resume_context,
+        ),
         job_dir=job_dir,
     )
     if final_checkpoint is None:
@@ -1061,6 +1167,7 @@ def _step_auto_mode_render(
     trusted_grant_keys: dict,
     trusted_status_keys: dict,
     sleep_fn: Callable[[float], None] = time.sleep,
+    resume_context: str | None = None,
 ) -> OrchestratorResult:
     """Guarded render with the P2-009 retry loop (plan sections 4.2 /
     5.2.3). Failure scope is the single key ``'render_candidate'``.
@@ -1156,7 +1263,10 @@ def _step_auto_mode_render(
                         actor='orchestrator',
                         decision='REVOKED',
                         now=now_iso,
-                        reason='Job grant was revoked by issuer before a retry render',
+                        reason=_with_resume_context(
+                            'Job grant was revoked by issuer before a retry render',
+                            resume_context,
+                        ),
                         job_dir=job_dir,
                     )
                     return _deny_result(
@@ -1177,7 +1287,10 @@ def _step_auto_mode_render(
                     actor='orchestrator',
                     decision='BLOCKED',
                     now=now_iso,
-                    reason=f"Re-verification before a retry render failed: {fresh.reason}",
+                    reason=_with_resume_context(
+                        f"Re-verification before a retry render failed: {fresh.reason}",
+                        resume_context,
+                    ),
                     job_dir=job_dir,
                 )
                 return _deny_result(
@@ -1241,7 +1354,9 @@ def _step_auto_mode_render(
                     actor='orchestrator',
                     decision='RENDERED',
                     now=now_iso,
-                    reason='Renderer completed candidate output successfully',
+                    reason=_with_resume_context(
+                        'Renderer completed candidate output successfully', resume_context,
+                    ),
                     job_dir=job_dir,
                 )
                 if new_checkpoint is None:
@@ -1316,7 +1431,7 @@ def _step_auto_mode_render(
             actor='orchestrator',
             decision='FAILED',
             now=now_iso,
-            reason=fail_reason,
+            reason=_with_resume_context(fail_reason, resume_context),
             job_dir=job_dir,
         )
         return _deny_result(
@@ -1357,6 +1472,7 @@ def _step_qc_and_review(
     now,
     now_iso: str,
     evidence_ids: tuple[str, ...],
+    resume_context: str | None = None,
 ) -> _QCOutcome:
     """Run fresh QC after a successful render and transition per its
     target_state (plan section 5.4; closes the P2-007 D5 gap).
@@ -1420,7 +1536,9 @@ def _step_qc_and_review(
                 actor='orchestrator',
                 decision='REVOKED',
                 now=now_iso,
-                reason='Job grant was revoked by issuer before QC',
+                reason=_with_resume_context(
+                    'Job grant was revoked by issuer before QC', resume_context,
+                ),
                 job_dir=job_dir,
             )
             return _QCOutcome(
@@ -1446,7 +1564,9 @@ def _step_qc_and_review(
             actor='orchestrator',
             decision='BLOCKED',
             now=now_iso,
-            reason=f"Re-verification before QC failed: {fresh.reason}",
+            reason=_with_resume_context(
+                f"Re-verification before QC failed: {fresh.reason}", resume_context,
+            ),
             job_dir=job_dir,
         )
         return _QCOutcome(
@@ -1514,7 +1634,7 @@ def _step_qc_and_review(
             actor='orchestrator',
             decision='QC_EVALUATED',
             now=now_iso,
-            reason=qc.reason,
+            reason=_with_resume_context(qc.reason, resume_context),
             job_dir=job_dir,
         )
         if new_checkpoint is None:
@@ -1544,7 +1664,7 @@ def _step_qc_and_review(
             actor='orchestrator',
             decision='FAILED',
             now=now_iso,
-            reason=qc.reason,
+            reason=_with_resume_context(qc.reason, resume_context),
             job_dir=job_dir,
         )
         if new_checkpoint2 is None:
@@ -1567,7 +1687,7 @@ def _step_qc_and_review(
             result=_deny_result(
                 final_state='FAILED_JOB',
                 deny_code=RENDER_EXECUTION_FAILED,
-                reason=qc.reason,
+                reason=_with_resume_context(qc.reason, resume_context),
                 spec=spec,
                 checkpoint=new_checkpoint2,
                 evidence_ids=ids,
@@ -1588,7 +1708,7 @@ def _step_qc_and_review(
             actor='orchestrator',
             decision='QC_EVALUATED',
             now=now_iso,
-            reason=qc.reason,
+            reason=_with_resume_context(qc.reason, resume_context),
             job_dir=job_dir,
         )
         if new_checkpoint is None:
@@ -1615,7 +1735,7 @@ def _step_qc_and_review(
             actor='orchestrator',
             decision='READY_FOR_REVIEW',
             now=now_iso,
-            reason=qc.reason,
+            reason=_with_resume_context(qc.reason, resume_context),
             job_dir=job_dir,
         )
         if new_checkpoint2 is None:
@@ -1639,7 +1759,7 @@ def _step_qc_and_review(
                 success=True,
                 final_state='READY_FOR_REVIEW',
                 deny_code=None,
-                reason=qc.reason,
+                reason=_with_resume_context(qc.reason, resume_context),
                 spec=spec,
                 checkpoint=new_checkpoint2,
                 evidence_ids=ids,
@@ -1660,7 +1780,7 @@ def _step_qc_and_review(
         actor='orchestrator',
         decision='QC_EVALUATED',
         now=now_iso,
-        reason=qc.reason,
+        reason=_with_resume_context(qc.reason, resume_context),
         job_dir=job_dir,
     )
     if new_checkpoint is None:
@@ -1687,7 +1807,7 @@ def _step_qc_and_review(
         actor='orchestrator',
         decision='BLOCKED',
         now=now_iso,
-        reason=qc.reason,
+        reason=_with_resume_context(qc.reason, resume_context),
         job_dir=job_dir,
     )
     if new_checkpoint2 is None:
@@ -1713,7 +1833,7 @@ def _step_qc_and_review(
         result=_deny_result(
             final_state='BLOCKED_NEEDS_REVIEW',
             deny_code=deny_code,
-            reason=qc.reason,
+            reason=_with_resume_context(qc.reason, resume_context),
             spec=spec,
             checkpoint=new_checkpoint2,
             evidence_ids=ids,
@@ -1975,3 +2095,1233 @@ def orchestrate_render_job(
         render_checkpoint = render_outcome.checkpoint
         render_execution = render_outcome.render_execution
         qc_ids = render_outcome.evidence_ids
+
+
+_RETRY_EVIDENCE_FIELDS = frozenset({
+    'schema_version', 'event_id', 'job_id', 'failure_code', 'failure_scope',
+    'classification', 'attempt_count', 'max_allowance', 'exact_action',
+    'before_artifact_digests', 'after_artifact_digests', 'result',
+    'timestamp', 'reason',
+})
+
+
+def _resume_json_pairs(pairs):
+    parsed = {}
+    for key, value in pairs:
+        if key in parsed:
+            raise ValueError('duplicate JSON key')
+        parsed[key] = value
+    return parsed
+
+
+def _resume_reject_constant(value):
+    raise ValueError(f'invalid JSON constant: {value}')
+
+
+def _resume_retry_events(
+    *,
+    job_dir: Path,
+    spec: JobSpec,
+    attempt_count: int,
+) -> list[RetryEvent]:
+    """Load only schema-valid retry records covered by the durable count."""
+    events = []
+    for attempt in range(1, min(attempt_count, 999) + 1):
+        path = job_dir / 'evidence' / f'retry_{FAILURE_KEY}_{attempt:03d}.json'
+        try:
+            raw = path.read_bytes()
+        except FileNotFoundError:
+            continue
+        except OSError:
+            continue
+        try:
+            payload = json.loads(
+                raw.decode('utf-8'),
+                object_pairs_hook=_resume_json_pairs,
+                parse_float=_resume_reject_constant,
+                parse_constant=_resume_reject_constant,
+            )
+            if type(payload) is not dict or payload.keys() != _RETRY_EVIDENCE_FIELDS:
+                continue
+            if (
+                payload['schema_version'] != '1'
+                or payload['job_id'] != spec.job_id
+                or payload['attempt_count'] != attempt
+                or payload['max_allowance'] != spec.retry_allowance
+                or payload['failure_scope'] != FAILURE_KEY
+                or payload['exact_action'] != f'render:{FAILURE_KEY}'
+            ):
+                continue
+            event = create_retry_event(
+                job_id=payload['job_id'],
+                failure_key=payload['failure_scope'],
+                failure_code=payload['failure_code'],
+                classification=payload['classification'],
+                attempt_count=payload['attempt_count'],
+                max_allowance=payload['max_allowance'],
+                exact_action=payload['exact_action'],
+                before_artifact_digests=payload['before_artifact_digests'],
+                after_artifact_digests=payload['after_artifact_digests'],
+                result=payload['result'],
+                now_iso=payload['timestamp'],
+                reason=payload['reason'],
+            )
+        except (KeyError, TypeError, ValueError, UnicodeError):
+            continue
+        if payload['event_id'] != event.event_id:
+            continue
+        events.append(event)
+    return events
+
+
+def _resume_input_checks(
+    *,
+    job_dir: Path,
+    spec: JobSpec,
+    events,
+    transcript_data,
+    script_text,
+    mfa_artifact_bytes,
+    expected_audio_sha256: str,
+) -> tuple[dict, str | None, str | None]:
+    """Bind caller inputs to evidence already referenced by the state chain."""
+    if (
+        type(transcript_data) is not dict
+        or type(transcript_data.get('text')) is not str
+        or type(script_text) is not str
+        or type(mfa_artifact_bytes) is not bytes
+    ):
+        return ({}, 'JOB_STATE_CONFLICT', 'Resume inputs have invalid types')
+
+    script_sha256 = _sha256_text_value(script_text)
+    transcript_sha256 = _sha256_text_value(transcript_data['text'])
+    mfa_sha256 = hashlib.sha256(mfa_artifact_bytes).hexdigest()
+    referenced = {
+        ref
+        for event in events
+        for ref in event.evidence_refs
+    }
+    referenced_files = {
+        ref for ref in referenced
+        if ref.startswith('ev_') and ref != 'ev_grant_verified'
+    }
+    evidence_dir = job_dir / 'evidence'
+    if referenced_files and (
+        evidence_dir.is_symlink()
+        or not evidence_dir.resolve().is_relative_to(job_dir.resolve())
+    ):
+        return ({}, 'AUDIT_CORRUPT', 'Referenced evidence directory is unsafe')
+    evidence_stages = {
+        f'ev_transcript_{spec.job_id}': 'TRANSCRIBED',
+        f'ev_g1_{spec.job_id}': 'SCRIPT_EVIDENCE_CHECKED',
+        f'ev_g2_{spec.job_id}': 'ALIGNED',
+        f'ev_g3_{spec.job_id}': 'RENDER_PERMITTED',
+    }
+    records = {}
+    for evidence_id, expected_stage in evidence_stages.items():
+        if evidence_id not in referenced:
+            continue
+        try:
+            record = load_evidence_record(
+                job_dir, evidence_id, expected_job_id=spec.job_id,
+            )
+        except (EvidenceError, OSError):
+            return ({}, 'AUDIT_CORRUPT', f'Invalid gate evidence: {evidence_id}')
+        if record is None or record.stage != expected_stage:
+            return ({}, 'AUDIT_CORRUPT', f'Missing or inconsistent gate evidence: {evidence_id}')
+        records[evidence_id] = record
+
+    script_refs = []
+    transcript_refs = []
+    mfa_refs = []
+    audio_refs = []
+    for evidence_id, record in records.items():
+        digests = record.input_digest_refs
+        if 'script_sha256' in digests:
+            script_refs.append(evidence_id)
+            if digests['script_sha256'] != script_sha256:
+                return ({}, 'JOB_STATE_CONFLICT', 'Resume script hash differs from recorded evidence')
+        elif evidence_id in (
+            f'ev_transcript_{spec.job_id}',
+            f'ev_g1_{spec.job_id}',
+            f'ev_g2_{spec.job_id}',
+            f'ev_g3_{spec.job_id}',
+        ):
+            return ({}, 'AUDIT_CORRUPT', f'Missing script hash in {evidence_id}')
+
+        if evidence_id in (
+            f'ev_transcript_{spec.job_id}',
+            f'ev_g1_{spec.job_id}',
+        ):
+            transcript_refs.append(evidence_id)
+            if record.artifact_sha256 != transcript_sha256:
+                return ({}, 'JOB_STATE_CONFLICT', 'Resume transcript hash differs from recorded evidence')
+        elif evidence_id == f'ev_g2_{spec.job_id}':
+            mfa_refs.append(evidence_id)
+            audio_refs.append(evidence_id)
+            if record.artifact_sha256 != mfa_sha256:
+                return ({}, 'JOB_STATE_CONFLICT', 'Resume MFA hash differs from recorded evidence')
+            if digests.get('extracted_audio_sha256') != expected_audio_sha256:
+                return ({}, 'JOB_STATE_CONFLICT', 'Resume audio hash differs from recorded MFA evidence')
+        elif evidence_id == f'ev_g3_{spec.job_id}':
+            mfa_refs.append(evidence_id)
+            if (
+                record.artifact_sha256 != mfa_sha256
+                or digests.get('mfa_artifact_sha256') != mfa_sha256
+            ):
+                return ({}, 'JOB_STATE_CONFLICT', 'Resume MFA hash differs from recorded G3 evidence')
+
+    transcript_disk_sha256 = None
+    if transcript_refs:
+        transcript_path = job_dir / 'evidence' / 'transcript_raw.json'
+        try:
+            transcript_payload = json.loads(
+                transcript_path.read_bytes().decode('utf-8'),
+                object_pairs_hook=_resume_json_pairs,
+                parse_constant=_resume_reject_constant,
+            )
+        except (OSError, ValueError, UnicodeError):
+            return ({}, 'AUDIT_CORRUPT', 'Referenced transcript artifact is missing or invalid')
+        if type(transcript_payload) is not dict or type(transcript_payload.get('text')) is not str:
+            return ({}, 'AUDIT_CORRUPT', 'Referenced transcript artifact has an invalid shape')
+        transcript_disk_sha256 = _sha256_text_value(transcript_payload['text'])
+        if transcript_disk_sha256 != transcript_sha256:
+            return ({}, 'JOB_STATE_CONFLICT', 'On-disk transcript text differs from resume inputs')
+        if any(
+            records[evidence_id].artifact_sha256 != transcript_disk_sha256
+            for evidence_id in transcript_refs
+        ):
+            return ({}, 'AUDIT_CORRUPT', 'On-disk transcript does not match referenced evidence')
+
+    mfa_disk_sha256 = None
+    if mfa_refs:
+        try:
+            mfa_disk_sha256 = hashlib.sha256(
+                (job_dir / 'evidence' / 'mfa_artifact.json').read_bytes(),
+            ).hexdigest()
+        except OSError:
+            return ({}, 'AUDIT_CORRUPT', 'Referenced MFA artifact is missing or unreadable')
+        if mfa_disk_sha256 != mfa_sha256:
+            return ({}, 'JOB_STATE_CONFLICT', 'On-disk MFA artifact differs from resume inputs')
+        if any(
+            records[evidence_id].artifact_sha256 != mfa_disk_sha256
+            for evidence_id in mfa_refs
+        ):
+            return ({}, 'AUDIT_CORRUPT', 'On-disk MFA artifact does not match referenced evidence')
+
+    checks = {
+        'script_text': {
+            'sha256': script_sha256,
+            'evidence_refs': script_refs,
+            'matches': True if script_refs else None,
+        },
+        'transcript_text': {
+            'sha256': transcript_sha256,
+            'evidence_refs': transcript_refs,
+            'on_disk_sha256': transcript_disk_sha256,
+            'matches': True if transcript_refs else None,
+        },
+        'mfa_artifact': {
+            'sha256': mfa_sha256,
+            'evidence_refs': mfa_refs,
+            'on_disk_sha256': mfa_disk_sha256,
+            'matches': True if mfa_refs else None,
+        },
+        'extracted_audio': {
+            'sha256': expected_audio_sha256,
+            'evidence_refs': audio_refs,
+            'matches': True if audio_refs else None,
+        },
+        'staged_source': {
+            'sha256': spec.source.sha256,
+            'reentry_verified': True,
+        },
+    }
+    return (checks, None, None)
+
+
+def _resume_status_view(status_bytes: bytes) -> dict:
+    try:
+        payload = json.loads(
+            status_bytes.decode('utf-8'),
+            object_pairs_hook=_resume_json_pairs,
+            parse_constant=_resume_reject_constant,
+        )
+    except (ValueError, UnicodeError):
+        return {}
+    if type(payload) is not dict:
+        return {}
+    return {
+        key: payload.get(key)
+        for key in ('grant_id', 'job_id', 'status', 'checked_at')
+    }
+
+
+def _write_resume_record(
+    *,
+    job_dir: Path,
+    checkpoint: JobCheckpoint,
+    resumed_at: str,
+    actor: str,
+    reason: str,
+    fresh_verify_refs: list[dict],
+    status_view: dict,
+    input_checks: dict,
+    dispatch_step: str,
+    candidate_discard: dict,
+) -> tuple[str, Path]:
+    relative_path = f'evidence/resume_{checkpoint.state_revision:03d}.json'
+    evidence_dir = job_dir / 'evidence'
+    if evidence_dir.is_symlink() or not evidence_dir.resolve().is_relative_to(job_dir.resolve()):
+        raise AuditError('AUDIT_CORRUPT')
+    evidence_dir.mkdir(parents=True, exist_ok=True)
+    record_path = job_dir / relative_path
+    payload = {
+        'schema_version': '1',
+        'event_id': f'evt_resume_{checkpoint.job_id}_r{checkpoint.state_revision}',
+        'job_id': checkpoint.job_id,
+        'grant_id': checkpoint.grant_id,
+        'prior_state': checkpoint.current_state,
+        'prior_state_revision': checkpoint.state_revision,
+        'resumed_at': resumed_at,
+        'actor': actor,
+        'reason': reason,
+        'fresh_verify_refs': fresh_verify_refs,
+        'status_view': status_view,
+        'attempt_counts': dict(checkpoint.attempt_counts),
+        'input_checks': input_checks,
+        'dispatch_step': dispatch_step,
+        'candidate_discard': candidate_discard,
+    }
+    atomic_write_file(
+        record_path,
+        json.dumps(payload, sort_keys=True, ensure_ascii=True, indent=2).encode('utf-8'),
+    )
+    return (relative_path, record_path)
+
+
+def _resume_candidate_result(
+    *,
+    spec: JobSpec,
+    checkpoint: JobCheckpoint,
+    job_dir: Path,
+) -> tuple[RenderExecutionResult | None, dict, str | None]:
+    """Trust a rendered candidate only when its digest is in successful retry evidence."""
+    output_dir = Path(spec.staging.job_output_dir)
+    candidate_path = Path(spec.staging.candidate_output_path)
+    if (
+        candidate_path.parent != output_dir
+        or output_dir.is_symlink()
+        or not output_dir.resolve().is_relative_to(job_dir.resolve())
+        or not output_dir.is_dir()
+    ):
+        return (None, {}, 'Candidate output directory is not inside the frozen job')
+
+    retry_events = _resume_retry_events(
+        job_dir=job_dir,
+        spec=spec,
+        attempt_count=checkpoint.attempt_counts.get(FAILURE_KEY, 0),
+    )
+    successful_digests = {
+        event.after_artifact_digests.get('candidate')
+        for event in retry_events
+        if event.result == 'SUCCESS' and event.after_artifact_digests.get('candidate')
+    }
+    latest_success = max(
+        (event for event in retry_events if event.result == 'SUCCESS'),
+        key=lambda event: event.attempt_count,
+        default=None,
+    )
+    expected_sha256 = (
+        latest_success.after_artifact_digests.get('candidate')
+        if latest_success is not None else None
+    )
+
+    candidate_exists = False
+    candidate_sha256 = None
+    candidate_size = None
+    discardable = False
+    try:
+        candidate_stat = candidate_path.lstat()
+        candidate_exists = True
+        if candidate_path.is_symlink():
+            discardable = True
+        elif not stat.S_ISREG(candidate_stat.st_mode):
+            return (None, {}, 'Candidate path is not a regular file')
+        else:
+            discardable = True
+            candidate_size = candidate_stat.st_size
+            try:
+                candidate_sha256 = _sha256_file(candidate_path)
+            except OSError:
+                candidate_sha256 = None
+    except FileNotFoundError:
+        pass
+    except OSError:
+        candidate_exists = True
+        discardable = False
+
+    matching = (
+        [latest_success]
+        if latest_success is not None
+        and latest_success.after_artifact_digests.get('candidate') == candidate_sha256
+        else []
+    )
+    if candidate_size is not None and candidate_size > 0 and candidate_sha256 and matching:
+        # RetryEvent v1 stores a SUCCESS result and the output digest, but not the
+        # original command, streams, duration, or byte count. QC uses the digest,
+        # file size, and exit status; derive exit_code=0 from SUCCESS and read the
+        # byte count from stat(). Keep unavailable process details as None.
+        render = RenderExecutionResult(
+            success=True,
+            command=None,  # type: ignore[arg-type]  # not persisted in RetryEvent v1
+            exit_code=0,
+            output_path=str(candidate_path),
+            output_sha256=candidate_sha256,
+            output_size_bytes=candidate_size,
+            duration_seconds=None,  # type: ignore[arg-type]  # not persisted in RetryEvent v1
+            stdout=None,  # type: ignore[arg-type]  # not persisted in RetryEvent v1
+            stderr=None,  # type: ignore[arg-type]  # not persisted in RetryEvent v1
+            error_message=None,
+        )
+        disposition = {
+            'discarded': False,
+            'planned_discard': False,
+            'candidate_sha256': candidate_sha256,
+            'expected_sha256': expected_sha256,
+            'matched_attempt_count': latest_success.attempt_count,
+            'reason': 'Candidate digest matches successful retry evidence',
+        }
+        return (render, disposition, None)
+
+    disposition = {
+        'discarded': False,
+        'planned_discard': candidate_exists and discardable,
+        'candidate_sha256': candidate_sha256,
+        'expected_sha256': expected_sha256,
+        'known_successful_candidate_sha256s': sorted(successful_digests),
+        'reason': (
+            (
+                'Candidate digest is not from the latest successful retry evidence'
+                if candidate_sha256 in successful_digests
+                else 'Candidate digest matches no successful retry evidence'
+            )
+            if candidate_exists else 'Candidate file is missing'
+        ),
+    }
+    if candidate_exists and not discardable:
+        return (None, disposition, 'Untrusted candidate cannot be safely discarded')
+    return (None, disposition, None)
+
+
+def _resume_evidence_ids(job_dir: Path, events) -> tuple[str, ...]:
+    evidence_ids = []
+    for event in events:
+        for reference in event.evidence_refs:
+            if not reference.startswith('ev_') or reference in evidence_ids:
+                continue
+            if (job_dir / 'evidence' / f'{reference}.json').is_file():
+                evidence_ids.append(reference)
+    return tuple(evidence_ids)
+
+
+def _resume_auth_denial(
+    *,
+    spec: JobSpec,
+    checkpoint: JobCheckpoint,
+    deny_code: str,
+    reason: str,
+    now_iso: str,
+    resume_context: str | None,
+) -> OrchestratorResult:
+    target = 'CANCELLED' if deny_code == 'AUTH_REVOKED' else 'BLOCKED_AUTHORIZATION'
+    new_checkpoint, transition = _advance(
+        checkpoint,
+        target_state=target,
+        event_id=(
+            f"evt_resume_revoked_{spec.job_id}_r{checkpoint.state_revision}"
+            if target == 'CANCELLED'
+            else f"evt_resume_auth_block_{spec.job_id}_r{checkpoint.state_revision}"
+        ),
+        evidence_refs=(f'deny:{deny_code}',),
+        actor='orchestrator',
+        decision='REVOKED' if target == 'CANCELLED' else 'DENIED',
+        now=now_iso,
+        reason=_with_resume_context(reason, resume_context),
+        job_dir=_job_dir(spec),
+    )
+    if new_checkpoint is None:
+        return _deny_result(
+            final_state=checkpoint.current_state,
+            deny_code=RESUME_NOT_PERMITTED,
+            reason=f"Resume authorization denied in non-resumable state: {deny_code}",
+            spec=spec,
+            checkpoint=checkpoint,
+        )
+    return _deny_result(
+        final_state=target,
+        deny_code=deny_code,
+        reason=reason,
+        spec=spec,
+        checkpoint=new_checkpoint,
+    )
+
+
+def _resume_verify_render_candidate(
+    *,
+    spec: JobSpec,
+    grant_bytes: bytes,
+    status_bytes: bytes,
+    trusted_grant_keys: dict,
+    trusted_status_keys: dict,
+    now,
+) -> Decision:
+    """D-IV: verify render_candidate directly from RENDER_PERMITTED."""
+    return verify(
+        grant_bytes,
+        status_bytes,
+        trusted_grant_keys=trusted_grant_keys,
+        trusted_status_keys=trusted_status_keys,
+        now=now,
+        job_id=spec.job_id,
+        source_ref={
+            'provider': spec.source.provider,
+            'id': spec.source.id,
+            'revision': spec.source.revision,
+            'sha256': spec.source.sha256,
+        },
+        style_id=spec.style_id,
+        style_overrides=dict(spec.style_overrides),
+        review_destination=dict(spec.review_destination),
+        action='render_candidate',
+        processor=None,
+        existing_binding=spec.job_id,
+    )
+
+
+def _step_resume(
+    *,
+    grant_bytes: bytes,
+    status_bytes: bytes,
+    trusted_grant_keys: dict,
+    trusted_status_keys: dict,
+    now,
+    now_iso: str,
+    job_id: str,
+    grant_id: str,
+    source_ref: dict,
+    style_id: str,
+    style_overrides: dict,
+    review_destination: dict,
+    allowed_actions,
+    allowed_processors,
+    retry_allowance: int,
+    source_path,
+    trusted_source_root,
+    base_staging_dir,
+    existing_binding: str | None,
+    transcript_data: dict,
+    script_text: str,
+    script_lines: list,
+    transcript_tool_metadata: dict,
+    mfa_artifact_bytes: bytes,
+    mfa_tool_metadata: dict,
+    cues: list,
+    media_duration_seconds: float,
+    fonts_dir,
+    expected_audio_sha256: str,
+    auto_mode: bool,
+    adapter: PlatformAdapter,
+    sleep_fn: Callable[[float], None],
+    script_sha256: str | None,
+    actor: str,
+    reason: str,
+) -> OrchestratorResult:
+    """Validate the durable job and dispatch from its current checkpoint."""
+    if Path(job_id).name != job_id or job_id in ('.', '..'):
+        return _deny_result(
+            final_state='FAILED_JOB',
+            deny_code='AUTH_SCHEMA_INVALID',
+            reason='Resume job_id is invalid',
+        )
+
+    staging_root = Path(base_staging_dir).resolve()
+    job_dir = staging_root / 'jobs' / job_id
+    if job_dir.is_symlink():
+        return _deny_result(
+            final_state='FAILED_JOB',
+            deny_code='AUDIT_CORRUPT',
+            reason='Resume job directory is a symlink',
+        )
+    if not job_dir.is_dir():
+        return _deny_result(
+            final_state='FAILED_JOB',
+            deny_code=RESUME_NOT_PERMITTED,
+            reason='No existing job is available to resume',
+        )
+
+    status_view = _resume_status_view(status_bytes)
+    try:
+        ledger_binding = _resolve_existing_binding(
+            base_staging_dir=base_staging_dir,
+            grant_id=grant_id,
+            caller_binding=None,
+        )
+    except OrchestratorError as exc:
+        return _deny_result(
+            final_state='FAILED_JOB',
+            deny_code='AUDIT_CORRUPT',
+            reason=str(exc),
+        )
+    caller_binding_mismatch = (
+        existing_binding is not None and existing_binding != ledger_binding
+    )
+
+    fresh = verify(
+        grant_bytes,
+        status_bytes,
+        trusted_grant_keys=trusted_grant_keys,
+        trusted_status_keys=trusted_status_keys,
+        now=now,
+        job_id=job_id,
+        source_ref=source_ref,
+        style_id=style_id,
+        style_overrides=style_overrides,
+        review_destination=review_destination,
+        action='intake_copy',
+        processor=None,
+        existing_binding=ledger_binding,
+    )
+    fresh_verify_refs = [{
+        'action': 'intake_copy',
+        'allowed': fresh.allowed,
+        'decision': fresh.reason,
+        'status_checked_at': status_view.get('checked_at'),
+    }]
+
+    def load_record():
+        try:
+            return load_job_record(job_dir, job_id=job_id)
+        except (AuditError, OSError, ValueError, TypeError):
+            return None
+
+    def audit_corrupt_result() -> OrchestratorResult:
+        return _deny_result(
+            final_state='FAILED_JOB',
+            deny_code='AUDIT_CORRUPT',
+            reason='Resume audit chain is missing or inconsistent',
+        )
+
+    def nonresumable_result(
+        spec: JobSpec,
+        checkpoint: JobCheckpoint,
+    ) -> OrchestratorResult | None:
+        resumable_states = {
+            'AUTHORIZED',
+            'TRANSCRIBED',
+            'SCRIPT_EVIDENCE_CHECKED',
+            'ALIGNED',
+            'RENDER_PERMITTED',
+            'RENDERED',
+        }
+        if checkpoint.current_state in resumable_states:
+            return None
+        correction_note = (
+            '; BLOCKED_NEEDS_REVIEW must use the correction path'
+            if checkpoint.current_state == 'BLOCKED_NEEDS_REVIEW' else ''
+        )
+        return _deny_result(
+            final_state=checkpoint.current_state,
+            deny_code=RESUME_NOT_PERMITTED,
+            reason=(
+                f"Resume is not permitted from {checkpoint.current_state}{correction_note}"
+            ),
+            spec=spec,
+            checkpoint=checkpoint,
+        )
+
+    if not fresh.allowed:
+        record = load_record()
+        if record is None:
+            return audit_corrupt_result()
+        spec, checkpoint, _events = record
+        rejected = nonresumable_result(spec, checkpoint)
+        if rejected is not None:
+            return rejected
+        return _resume_auth_denial(
+            spec=spec,
+            checkpoint=checkpoint,
+            deny_code=fresh.reason,
+            reason=f"Fresh resume verification failed: {fresh.reason}",
+            now_iso=now_iso,
+            resume_context=None,
+        )
+
+    intake_result = process_job_intake(
+        grant_bytes,
+        status_bytes,
+        job_id=job_id,
+        grant_id=grant_id,
+        source_ref=source_ref,
+        style_id=style_id,
+        style_overrides=style_overrides,
+        review_destination=review_destination,
+        allowed_actions=allowed_actions,
+        allowed_processors=allowed_processors,
+        retry_allowance=retry_allowance,
+        source_path=source_path,
+        trusted_source_root=trusted_source_root,
+        base_staging_dir=base_staging_dir,
+        trusted_grant_keys=trusted_grant_keys,
+        trusted_status_keys=trusted_status_keys,
+        now=now,
+        existing_binding=ledger_binding,
+    )
+    if not intake_result.success:
+        record = load_record()
+        if record is None:
+            if intake_result.deny_reason == 'JOB_STATE_CONFLICT':
+                return audit_corrupt_result()
+            return _deny_result(
+                final_state='FAILED_JOB',
+                deny_code=intake_result.deny_reason,
+                reason=f"Resume intake failed: {intake_result.deny_reason}",
+            )
+        spec, checkpoint, _events = record
+        rejected = nonresumable_result(spec, checkpoint)
+        if rejected is not None:
+            return rejected
+        if intake_result.deny_reason in (
+            'AUTH_REVOKED', 'AUTH_EXPIRED_OR_NOT_YET_VALID',
+            'REVOCATION_INVALID', 'REVOCATION_STALE_OR_MISMATCH',
+        ):
+            return _resume_auth_denial(
+                spec=spec,
+                checkpoint=checkpoint,
+                deny_code=intake_result.deny_reason,
+                reason=f"Fresh resume verification failed: {intake_result.deny_reason}",
+                now_iso=now_iso,
+                resume_context=None,
+            )
+        return _deny_result(
+            final_state=checkpoint.current_state,
+            deny_code=intake_result.deny_reason,
+            reason=f"Resume intake failed: {intake_result.deny_reason}",
+            spec=spec,
+            checkpoint=checkpoint,
+        )
+
+    # The re-entry above verifies current caller bindings and the staged source.
+    # Load the complete durable chain separately so corruption is reported as
+    # AUDIT_CORRUPT rather than being confused with a binding mismatch.
+    try:
+        record = load_job_record(job_dir, job_id=job_id)
+    except (AuditError, OSError, ValueError, TypeError):
+        return audit_corrupt_result()
+    if record is None:
+        return audit_corrupt_result()
+    spec, checkpoint, events = record
+
+    rejected = nonresumable_result(spec, checkpoint)
+    if rejected is not None:
+        return rejected
+
+    # A resume may only continue the job already bound to this grant. A missing
+    # ledger binding is not silently recreated as a new redemption.
+    if ledger_binding != job_id or caller_binding_mismatch:
+        return _resume_auth_denial(
+            spec=spec,
+            checkpoint=checkpoint,
+            deny_code='GRANT_REPLAY',
+            reason='Resume grant is not bound to this job',
+            now_iso=now_iso,
+            resume_context=None,
+        )
+
+    input_checks, input_deny, input_reason = _resume_input_checks(
+        job_dir=job_dir,
+        spec=spec,
+        events=events,
+        transcript_data=transcript_data,
+        script_text=script_text,
+        mfa_artifact_bytes=mfa_artifact_bytes,
+        expected_audio_sha256=expected_audio_sha256,
+    )
+    if input_deny is not None:
+        return _deny_result(
+            final_state=checkpoint.current_state,
+            deny_code=input_deny,
+            reason=input_reason or 'Resume input evidence check failed',
+            spec=spec,
+            checkpoint=checkpoint,
+            evidence_ids=_resume_evidence_ids(job_dir, events),
+        )
+
+    initial_state = checkpoint.current_state
+    collected = _resume_evidence_ids(job_dir, events)
+    candidate_discard = {
+        'discarded': False,
+        'planned_discard': False,
+        'candidate_sha256': None,
+        'expected_sha256': None,
+        'reason': 'No candidate discard was needed',
+    }
+    render_execution = None
+    dispatch_step = {
+        'AUTHORIZED': 'G1_TRANSCRIPT_AND_SCRIPT_EVIDENCE',
+        'TRANSCRIBED': 'G1_SCRIPT_EVIDENCE',
+        'SCRIPT_EVIDENCE_CHECKED': 'G2_MFA_PROVENANCE',
+        'ALIGNED': 'G3_FRESH_PRE_RENDER_GATE',
+        'RENDER_PERMITTED': 'FRESH_RENDER_VERIFY_THEN_RENDER',
+        'RENDERED': 'QC_FROM_VERIFIED_CANDIDATE',
+    }[initial_state]
+
+    if initial_state == 'RENDERED':
+        if checkpoint.attempt_counts.get(FAILURE_KEY, 0) < 1:
+            return _deny_result(
+                final_state=checkpoint.current_state,
+                deny_code='AUDIT_CORRUPT',
+                reason='RENDERED checkpoint has no counted render attempt',
+                spec=spec,
+                checkpoint=checkpoint,
+                evidence_ids=collected,
+            )
+        render_execution, candidate_discard, candidate_error = _resume_candidate_result(
+            spec=spec,
+            checkpoint=checkpoint,
+            job_dir=job_dir,
+        )
+        if candidate_error is not None:
+            return _deny_result(
+                final_state=checkpoint.current_state,
+                deny_code=RESUME_NOT_PERMITTED,
+                reason=candidate_error,
+                spec=spec,
+                checkpoint=checkpoint,
+                evidence_ids=collected,
+            )
+        if render_execution is None:
+            if not candidate_discard.get('planned_discard'):
+                return _deny_result(
+                    final_state=checkpoint.current_state,
+                    deny_code=RESUME_NOT_PERMITTED,
+                    reason=candidate_discard.get('reason', 'Candidate is not trusted'),
+                    spec=spec,
+                    checkpoint=checkpoint,
+                    evidence_ids=collected,
+                )
+            dispatch_step = 'DISCARD_UNTRUSTED_CANDIDATE_THEN_COUNTED_RENDER'
+
+    # Reverify render_candidate directly from RENDER_PERMITTED (D-IV); running
+    # G3 here would ask the reducer for a forbidden same/out-of-order state.
+    if initial_state == 'RENDER_PERMITTED':
+        fresh_render = _resume_verify_render_candidate(
+            spec=spec,
+            grant_bytes=grant_bytes,
+            status_bytes=status_bytes,
+            trusted_grant_keys=trusted_grant_keys,
+            trusted_status_keys=trusted_status_keys,
+            now=now,
+        )
+        fresh_verify_refs.append({
+            'action': 'render_candidate',
+            'allowed': fresh_render.allowed,
+            'decision': fresh_render.reason,
+            'status_checked_at': status_view.get('checked_at'),
+        })
+        if not fresh_render.allowed:
+            return _resume_auth_denial(
+                spec=spec,
+                checkpoint=checkpoint,
+                deny_code=fresh_render.reason,
+                reason=f"Fresh render verification failed: {fresh_render.reason}",
+                now_iso=now_iso,
+                resume_context=None,
+            )
+
+    preflight = _preflight_capabilities(
+        adapter=adapter,
+        now_iso=now_iso,
+        review_destination=review_destination,
+    )
+    if preflight is not None:
+        return replace(preflight, spec=spec, checkpoint=checkpoint)
+
+    try:
+        relative_path, _record_path = _write_resume_record(
+            job_dir=job_dir,
+            checkpoint=checkpoint,
+            resumed_at=now_iso,
+            actor=actor,
+            reason=reason,
+            fresh_verify_refs=fresh_verify_refs,
+            status_view=status_view,
+            input_checks=input_checks,
+            dispatch_step=dispatch_step,
+            candidate_discard=candidate_discard,
+        )
+    except (AuditError, OSError, ValueError) as exc:
+        return _deny_result(
+            final_state=checkpoint.current_state,
+            deny_code='AUDIT_CORRUPT',
+            reason=f'Resume record could not be written: {type(exc).__name__}',
+            spec=spec,
+            checkpoint=checkpoint,
+            evidence_ids=collected,
+        )
+    resume_context = (
+        f"resumed from {checkpoint.current_state} rev {checkpoint.state_revision} "
+        f"({relative_path})"
+    )
+
+    if (
+        initial_state == 'RENDERED'
+        and render_execution is None
+        and auto_mode
+    ):
+        candidate_path = Path(spec.staging.candidate_output_path)
+        try:
+            candidate_path.unlink()
+        except OSError as exc:
+            candidate_discard['discard_error'] = type(exc).__name__
+            try:
+                _write_resume_record(
+                    job_dir=job_dir,
+                    checkpoint=checkpoint,
+                    resumed_at=now_iso,
+                    actor=actor,
+                    reason=reason,
+                    fresh_verify_refs=fresh_verify_refs,
+                    status_view=status_view,
+                    input_checks=input_checks,
+                    dispatch_step=dispatch_step,
+                    candidate_discard=candidate_discard,
+                )
+            except (AuditError, OSError, ValueError):
+                return _deny_result(
+                    final_state=checkpoint.current_state,
+                    deny_code='AUDIT_CORRUPT',
+                    reason='Resume discard failure could not be recorded',
+                    spec=spec,
+                    checkpoint=checkpoint,
+                    evidence_ids=collected,
+                )
+            return _deny_result(
+                final_state=checkpoint.current_state,
+                deny_code=RESUME_NOT_PERMITTED,
+                reason='Untrusted candidate could not be safely discarded',
+                spec=spec,
+                checkpoint=checkpoint,
+                evidence_ids=collected,
+            )
+        candidate_discard['discarded'] = True
+        candidate_discard['discarded_at'] = now_iso
+        try:
+            _write_resume_record(
+                job_dir=job_dir,
+                checkpoint=checkpoint,
+                resumed_at=now_iso,
+                actor=actor,
+                reason=reason,
+                fresh_verify_refs=fresh_verify_refs,
+                status_view=status_view,
+                input_checks=input_checks,
+                dispatch_step=dispatch_step,
+                candidate_discard=candidate_discard,
+            )
+        except (AuditError, OSError, ValueError):
+            return _deny_result(
+                final_state=checkpoint.current_state,
+                deny_code='AUDIT_CORRUPT',
+                reason='Resume discard completion could not be recorded',
+                spec=spec,
+                checkpoint=checkpoint,
+                evidence_ids=collected,
+            )
+
+    if initial_state == 'AUTHORIZED':
+        step = _step_transcript_g1(
+            spec=spec,
+            checkpoint=checkpoint,
+            transcript_data=transcript_data,
+            script_text=script_text,
+            script_lines=script_lines,
+            transcript_tool_metadata=transcript_tool_metadata,
+            now_iso=now_iso,
+            resume_context=resume_context,
+        )
+        if isinstance(step, OrchestratorResult):
+            return step
+        checkpoint, ids = step
+        collected += tuple(i for i in ids if i not in collected)
+    elif initial_state == 'TRANSCRIBED':
+        step = _step_g1_after_transcribed(
+            spec=spec,
+            checkpoint=checkpoint,
+            transcript_data=transcript_data,
+            script_text=script_text,
+            script_lines=script_lines,
+            transcript_tool_metadata=transcript_tool_metadata,
+            now_iso=now_iso,
+            resume_context=resume_context,
+        )
+        if isinstance(step, OrchestratorResult):
+            return step
+        checkpoint, ids = step
+        collected += tuple(i for i in ids if i not in collected)
+
+    g2_record = None
+    if checkpoint.current_state == 'SCRIPT_EVIDENCE_CHECKED':
+        step = _step_mfa_g2(
+            spec=spec,
+            checkpoint=checkpoint,
+            mfa_artifact_bytes=mfa_artifact_bytes,
+            expected_script_sha256=_sha256_text_value(script_text),
+            expected_audio_sha256=expected_audio_sha256,
+            media_duration_seconds=media_duration_seconds,
+            script_text=script_text,
+            mfa_tool_metadata=mfa_tool_metadata,
+            now_iso=now_iso,
+            resume_context=resume_context,
+        )
+        if isinstance(step, OrchestratorResult):
+            return step
+        checkpoint, g2_record, ids = step
+        collected += tuple(i for i in ids if i not in collected)
+    elif checkpoint.current_state == 'ALIGNED':
+        try:
+            g2_record = load_evidence_record(
+                job_dir, f'ev_g2_{spec.job_id}', expected_job_id=spec.job_id,
+            )
+        except (EvidenceError, OSError):
+            g2_record = None
+        if g2_record is None or g2_record.stage != 'ALIGNED':
+            return _deny_result(
+                final_state=checkpoint.current_state,
+                deny_code='AUDIT_CORRUPT',
+                reason='Missing or inconsistent G2 evidence for resume',
+                spec=spec,
+                checkpoint=checkpoint,
+                evidence_ids=collected,
+            )
+
+    if checkpoint.current_state == 'ALIGNED':
+        step = _step_reverify_g3(
+            spec=spec,
+            checkpoint=checkpoint,
+            grant_bytes=grant_bytes,
+            status_bytes=status_bytes,
+            trusted_grant_keys=trusted_grant_keys,
+            trusted_status_keys=trusted_status_keys,
+            now=now,
+            script_text=script_text,
+            cues=cues,
+            mfa_evidence=g2_record,
+            now_iso=now_iso,
+            resume_context=resume_context,
+        )
+        if isinstance(step, OrchestratorResult):
+            return step
+        checkpoint, ids = step
+        collected += tuple(i for i in ids if i not in collected)
+
+    if checkpoint.current_state not in ('RENDER_PERMITTED', 'RENDERED'):
+        return _deny_result(
+            final_state=checkpoint.current_state,
+            deny_code='AUDIT_CORRUPT',
+            reason='Resume dispatch did not reach a renderable checkpoint',
+            spec=spec,
+            checkpoint=checkpoint,
+            evidence_ids=collected,
+        )
+
+    if checkpoint.current_state == 'RENDER_PERMITTED' or render_execution is None:
+        render_outcome = _step_auto_mode_render(
+            spec=spec,
+            checkpoint=checkpoint,
+            script_text=script_text,
+            mfa_artifact_bytes=mfa_artifact_bytes,
+            fonts_dir=fonts_dir,
+            auto_mode=auto_mode,
+            evidence_ids=collected,
+            now_iso=now_iso,
+            now=now,
+            grant_bytes=grant_bytes,
+            status_bytes=status_bytes,
+            trusted_grant_keys=trusted_grant_keys,
+            trusted_status_keys=trusted_status_keys,
+            sleep_fn=sleep_fn,
+            resume_context=resume_context,
+        )
+        if not render_outcome.success:
+            return render_outcome
+        checkpoint = render_outcome.checkpoint
+        render_execution = render_outcome.render_execution
+        collected = render_outcome.evidence_ids
+
+    if render_execution is None:
+        return _deny_result(
+            final_state=checkpoint.current_state,
+            deny_code='AUDIT_CORRUPT',
+            reason='Resume has no verified candidate for QC',
+            spec=spec,
+            checkpoint=checkpoint,
+            evidence_ids=collected,
+        )
+
+    qc_checkpoint = checkpoint
+    qc_ids = collected
+    reused_candidate = initial_state == 'RENDERED' and not candidate_discard.get('discarded')
+    while True:
+        qc_outcome = _step_qc_and_review(
+            spec=spec,
+            checkpoint=qc_checkpoint,
+            render_execution=render_execution,
+            script_sha256=script_sha256,
+            grant_bytes=grant_bytes,
+            status_bytes=status_bytes,
+            trusted_grant_keys=trusted_grant_keys,
+            trusted_status_keys=trusted_status_keys,
+            now=now,
+            now_iso=now_iso,
+            evidence_ids=qc_ids,
+            resume_context=resume_context,
+        )
+        if qc_outcome.result is not None:
+            if reused_candidate:
+                return replace(qc_outcome.result, renderer_invoked=False)
+            return qc_outcome.result
+        qc_ids = qc_outcome.evidence_ids
+        sleep_fn(qc_outcome.retry_decision.backoff_seconds)
+        render_outcome = _step_auto_mode_render(
+            spec=spec,
+            checkpoint=qc_checkpoint,
+            script_text=script_text,
+            mfa_artifact_bytes=mfa_artifact_bytes,
+            fonts_dir=fonts_dir,
+            auto_mode=auto_mode,
+            evidence_ids=qc_ids,
+            now_iso=now_iso,
+            now=now,
+            grant_bytes=grant_bytes,
+            status_bytes=status_bytes,
+            trusted_grant_keys=trusted_grant_keys,
+            trusted_status_keys=trusted_status_keys,
+            sleep_fn=sleep_fn,
+            resume_context=resume_context,
+        )
+        if not render_outcome.success:
+            return render_outcome
+        qc_checkpoint = render_outcome.checkpoint
+        render_execution = render_outcome.render_execution
+        qc_ids = render_outcome.evidence_ids
+        reused_candidate = False
+
+
+def resume_render_job(
+    grant_bytes: bytes,
+    status_bytes: bytes,
+    *,
+    trusted_grant_keys: dict,
+    trusted_status_keys: dict,
+    now,
+    job_id: str,
+    grant_id: str,
+    source_ref: dict,
+    style_id: str,
+    style_overrides: dict,
+    review_destination: dict,
+    allowed_actions,
+    allowed_processors,
+    retry_allowance: int,
+    source_path,
+    trusted_source_root,
+    base_staging_dir,
+    transcript_data: dict,
+    script_text: str,
+    script_lines: list,
+    transcript_tool_metadata: dict,
+    mfa_artifact_bytes: bytes,
+    mfa_tool_metadata: dict,
+    cues: list,
+    media_duration_seconds: float,
+    fonts_dir,
+    expected_audio_sha256: str,
+    actor: str,
+    reason: str,
+    auto_mode: bool = False,
+    adapter: PlatformAdapter | None = None,
+    existing_binding: str | None = None,
+    sleep_fn: Callable[[float], None] = time.sleep,
+    script_sha256: str | None = None,
+) -> OrchestratorResult:
+    """Explicitly resume an existing job from a supported checkpoint state."""
+    if type(grant_bytes) is not bytes or type(status_bytes) is not bytes:
+        raise OrchestratorError('grant_bytes and status_bytes must be bytes')
+    if type(job_id) is not str or not job_id:
+        raise OrchestratorError('job_id must be a non-empty str')
+    if type(grant_id) is not str or not grant_id:
+        raise OrchestratorError('grant_id must be a non-empty str')
+    if type(auto_mode) is not bool:
+        raise OrchestratorError('auto_mode must be a bool')
+    if type(actor) is not str or not actor.strip():
+        raise OrchestratorError('actor must be a non-empty str')
+    if type(reason) is not str or not reason.strip():
+        raise OrchestratorError('reason must be a non-empty str')
+    if adapter is not None and not isinstance(adapter, PlatformAdapter):
+        raise OrchestratorError('adapter must satisfy the PlatformAdapter contract')
+    if type(expected_audio_sha256) is not str or _DIGEST.fullmatch(expected_audio_sha256) is None:
+        raise OrchestratorError('expected_audio_sha256 must be a 64-char lowercase hex sha256')
+    if (
+        type(media_duration_seconds) is bool
+        or type(media_duration_seconds) not in (int, float)
+        or not math.isfinite(media_duration_seconds)
+        or media_duration_seconds < 0
+    ):
+        raise OrchestratorError('media_duration_seconds must be a non-negative finite number')
+    if type(script_text) is not str:
+        raise OrchestratorError('script_text must be a str')
+
+    now_iso = _now_iso(now)
+    adapter_obj: PlatformAdapter = (
+        adapter
+        if adapter is not None
+        else LocalAdapter(base_staging_dir=base_staging_dir)
+    )
+    return _step_resume(
+        grant_bytes=grant_bytes,
+        status_bytes=status_bytes,
+        trusted_grant_keys=trusted_grant_keys,
+        trusted_status_keys=trusted_status_keys,
+        now=now,
+        now_iso=now_iso,
+        job_id=job_id,
+        grant_id=grant_id,
+        source_ref=source_ref,
+        style_id=style_id,
+        style_overrides=style_overrides,
+        review_destination=review_destination,
+        allowed_actions=allowed_actions,
+        allowed_processors=allowed_processors,
+        retry_allowance=retry_allowance,
+        source_path=source_path,
+        trusted_source_root=trusted_source_root,
+        base_staging_dir=base_staging_dir,
+        transcript_data=transcript_data,
+        script_text=script_text,
+        script_lines=script_lines,
+        transcript_tool_metadata=transcript_tool_metadata,
+        mfa_artifact_bytes=mfa_artifact_bytes,
+        mfa_tool_metadata=mfa_tool_metadata,
+        cues=cues,
+        media_duration_seconds=media_duration_seconds,
+        fonts_dir=fonts_dir,
+        expected_audio_sha256=expected_audio_sha256,
+        auto_mode=auto_mode,
+        adapter=adapter_obj,
+        existing_binding=existing_binding,
+        sleep_fn=sleep_fn,
+        script_sha256=script_sha256,
+        actor=actor,
+        reason=reason,
+    )

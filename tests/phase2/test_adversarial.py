@@ -40,7 +40,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from pythainlp import word_tokenize
 
 from subtitle.adapters import AdapterError, ColabAdapter, LocalAdapter
-from subtitle.core.audit import load_checkpoint, save_checkpoint
+from subtitle.core.audit import load_checkpoint, load_job_record, save_checkpoint
 from subtitle.core.authorization import Decision, canonical, verify
 from subtitle.core.evidence import (
     CheckRecord,
@@ -48,8 +48,16 @@ from subtitle.core.evidence import (
     create_evidence_record,
 )
 from subtitle.core.orchestrator import (
+    _advance,
+    _step_intake,
+    _step_mfa_g2,
+    _step_pre_verify,
+    _step_reverify_g3,
+    _step_to_authorized,
+    _step_transcript_g1,
     _step_auto_mode_render,  # noqa: F401  (re-exported seam, used by the C-18 source check)
     orchestrate_render_job,
+    resume_render_job,
 )
 from subtitle.core.qc import QCResult
 from subtitle.core.renderer_adapter import prepare_mfa_words_timeline
@@ -337,6 +345,193 @@ class AdversarialTests(unittest.TestCase):
             reason='QC passed (mocked)',
             unsatisfied_checks=(),
         )
+
+    def _resume_args(self, **overrides):
+        args = dict(
+            trusted_grant_keys={('owner', 'g1'): self.grant_key.public_key()},
+            trusted_status_keys={('status', 's1'): self.status_key.public_key()},
+            now=NOW,
+            job_id='job-1',
+            grant_id='grant-1',
+            source_ref=copy.deepcopy(self.source_ref),
+            style_id='viralpop',
+            style_overrides={},
+            review_destination=copy.deepcopy(self.review_destination),
+            allowed_actions=['intake_copy', 'render_candidate'],
+            allowed_processors=['groq'],
+            retry_allowance=2,
+            source_path=self.source_path,
+            trusted_source_root=self.source_root,
+            base_staging_dir=self.base_staging_dir,
+            transcript_data={'text': SCRIPT},
+            script_text=SCRIPT,
+            script_lines=LINES,
+            transcript_tool_metadata=make_transcript_meta(),
+            mfa_artifact_bytes=make_mfa_bytes(),
+            mfa_tool_metadata=make_mfa_meta(),
+            cues=make_cues(LINES),
+            media_duration_seconds=60.0,
+            fonts_dir=self.fonts_dir,
+            expected_audio_sha256='d' * 64,
+            auto_mode=False,
+            existing_binding=None,
+        )
+        args.update(overrides)
+        args['script_sha256'] = hashlib.sha256(
+            args['script_text'].encode('utf-8'),
+        ).hexdigest()
+        return args
+
+    def _signed_job_inputs(self, args, *, grant=None, status=None):
+        grant_obj = grant if grant is not None else self.make_grant(
+            job_id=args['job_id'],
+            grant_id=args['grant_id'],
+            source_ref=args['source_ref'],
+            style_id=args['style_id'],
+            style_overrides=args['style_overrides'],
+            review_destination=args['review_destination'],
+            allowed_actions=args['allowed_actions'],
+            allowed_processors=args['allowed_processors'],
+            retry_allowance=args['retry_allowance'],
+        )
+        checked_at = ts(args['now'])
+        status_obj = status if status is not None else self.make_status(
+            job_id=args['job_id'],
+            grant_id=args['grant_id'],
+            checked_at=checked_at,
+        )
+        return (
+            sign(grant_obj, self.grant_key, GRANT_DOMAIN),
+            sign(status_obj, self.status_key, STATUS_DOMAIN),
+        )
+
+    def resume_job(self, *, grant=None, status=None, **overrides):
+        args = self._resume_args(**overrides)
+        raw_grant, raw_status = self._signed_job_inputs(
+            args, grant=grant, status=status,
+        )
+        return resume_render_job(
+            raw_grant,
+            raw_status,
+            actor='operator-test',
+            reason='resume after synthetic interruption',
+            **args,
+        )
+
+    def _prepare_resume_job(self, target_state='RENDER_PERMITTED', **overrides):
+        args = self._resume_args(**overrides)
+        raw_grant, raw_status = self._signed_job_inputs(args)
+        common = dict(
+            grant_bytes=raw_grant,
+            status_bytes=raw_status,
+            trusted_grant_keys=args['trusted_grant_keys'],
+            trusted_status_keys=args['trusted_status_keys'],
+            now=args['now'],
+            now_iso=ts(args['now']),
+            job_id=args['job_id'],
+            grant_id=args['grant_id'],
+            source_ref=args['source_ref'],
+            style_id=args['style_id'],
+            style_overrides=args['style_overrides'],
+            review_destination=args['review_destination'],
+            allowed_actions=args['allowed_actions'],
+            allowed_processors=args['allowed_processors'],
+            retry_allowance=args['retry_allowance'],
+            source_path=args['source_path'],
+            trusted_source_root=args['trusted_source_root'],
+            base_staging_dir=args['base_staging_dir'],
+            existing_binding=None,
+        )
+        pre = _step_pre_verify(
+            grant_bytes=raw_grant,
+            status_bytes=raw_status,
+            trusted_grant_keys=args['trusted_grant_keys'],
+            trusted_status_keys=args['trusted_status_keys'],
+            now=args['now'],
+            job_id=args['job_id'],
+            source_ref=args['source_ref'],
+            style_id=args['style_id'],
+            style_overrides=args['style_overrides'],
+            review_destination=args['review_destination'],
+            existing_binding=None,
+        )
+        self.assertTrue(pre.allowed)
+        intake = _step_intake(**common)
+        self.assertIsInstance(intake, tuple)
+        spec, checkpoint = intake
+
+        authorized = _step_to_authorized(
+            spec=spec, checkpoint=checkpoint, now_iso=ts(args['now']),
+        )
+        checkpoint = authorized
+        collected = ()
+        g1 = _step_transcript_g1(
+            spec=spec,
+            checkpoint=checkpoint,
+            transcript_data=args['transcript_data'],
+            script_text=args['script_text'],
+            script_lines=args['script_lines'],
+            transcript_tool_metadata=args['transcript_tool_metadata'],
+            now_iso=ts(args['now']),
+        )
+        checkpoint, ids = g1
+        collected += ids
+        g2 = _step_mfa_g2(
+            spec=spec,
+            checkpoint=checkpoint,
+            mfa_artifact_bytes=args['mfa_artifact_bytes'],
+            expected_script_sha256=args['script_sha256'],
+            expected_audio_sha256=args['expected_audio_sha256'],
+            media_duration_seconds=args['media_duration_seconds'],
+            script_text=args['script_text'],
+            mfa_tool_metadata=args['mfa_tool_metadata'],
+            now_iso=ts(args['now']),
+        )
+        checkpoint, g2_record, ids = g2
+        collected += ids
+        if target_state == 'ALIGNED':
+            return spec, checkpoint, args, raw_grant, raw_status, collected
+
+        g3 = _step_reverify_g3(
+            spec=spec,
+            checkpoint=checkpoint,
+            grant_bytes=raw_grant,
+            status_bytes=raw_status,
+            trusted_grant_keys=args['trusted_grant_keys'],
+            trusted_status_keys=args['trusted_status_keys'],
+            now=args['now'],
+            script_text=args['script_text'],
+            cues=args['cues'],
+            mfa_evidence=g2_record,
+            now_iso=ts(args['now']),
+        )
+        checkpoint, ids = g3
+        collected += ids
+        if target_state == 'RENDER_PERMITTED':
+            return spec, checkpoint, args, raw_grant, raw_status, collected
+        if target_state != 'RENDERED':
+            raise AssertionError(f'unsupported synthetic state: {target_state}')
+
+        with patch('subtitle.core.renderer_adapter.subprocess.run') as mock_run:
+            self._mock_render_fail_then_succeed(mock_run, fail_count=0)
+            rendered = _step_auto_mode_render(
+                spec=spec,
+                checkpoint=checkpoint,
+                script_text=args['script_text'],
+                mfa_artifact_bytes=args['mfa_artifact_bytes'],
+                fonts_dir=args['fonts_dir'],
+                auto_mode=True,
+                evidence_ids=collected,
+                now_iso=ts(args['now']),
+                now=args['now'],
+                grant_bytes=raw_grant,
+                status_bytes=raw_status,
+                trusted_grant_keys=args['trusted_grant_keys'],
+                trusted_status_keys=args['trusted_status_keys'],
+                sleep_fn=lambda _seconds: None,
+            )
+        self.assertTrue(rendered.success)
+        return spec, rendered.checkpoint, args, raw_grant, raw_status, rendered.evidence_ids
 
     def _valid_evidence_kwargs(self, **overrides):
         kwargs = dict(
@@ -929,6 +1124,382 @@ class AdversarialTests(unittest.TestCase):
             chip_main()
         self.assertTrue(chips_out.is_file())
         self.assertGreater(chips_out.stat().st_size, 0)
+
+    def test_resume_from_render_permitted_renders_and_succeeds(self):
+        """O-01: a fresh resume from RENDER_PERMITTED counts one render."""
+        _spec, before, _args, _grant, _status, _ids = self._prepare_resume_job()
+        self.assertEqual(before.current_state, 'RENDER_PERMITTED')
+
+        with (
+            patch('subtitle.core.renderer_adapter.subprocess.run') as mock_run,
+            patch('subtitle.core.orchestrator.run_qc') as mock_qc,
+        ):
+            self._mock_render_fail_then_succeed(mock_run, fail_count=0)
+            self._mock_qc_pass(mock_qc)
+            result = self.resume_job(auto_mode=True)
+
+        self.assertTrue(result.success)
+        self.assertEqual(result.final_state, 'READY_FOR_REVIEW')
+        self.assertEqual(mock_run.call_count, 1)
+        self.assertEqual(result.checkpoint.attempt_counts['render_candidate'], 1)
+        job_dir = Path(result.spec.staging.job_work_dir).parent
+        self.assertTrue((job_dir / 'evidence' / 'resume_006.json').is_file())
+        record = json.loads((job_dir / 'evidence' / 'resume_006.json').read_text())
+        self.assertEqual(record['prior_state'], 'RENDER_PERMITTED')
+        loaded_spec, _checkpoint, events = load_job_record(job_dir, job_id='job-1')
+        render_event = next(event for event in events if event.next_state == 'RENDERED')
+        self.assertIn(
+            'resumed from RENDER_PERMITTED rev 6 (evidence/resume_006.json)',
+            render_event.reason,
+        )
+        self.assertEqual(loaded_spec.job_id, 'job-1')
+
+    def test_resume_from_rendered_reuses_candidate_qc_only(self):
+        """O-01: a trusted RENDERED candidate is QC-checked without rendering."""
+        _spec, before, _args, _grant, _status, _ids = self._prepare_resume_job('RENDERED')
+        self.assertEqual(before.current_state, 'RENDERED')
+        self.assertEqual(before.attempt_counts['render_candidate'], 1)
+
+        with (
+            patch('subtitle.core.renderer_adapter.subprocess.run') as mock_run,
+            patch('subtitle.core.orchestrator.run_qc') as mock_qc,
+        ):
+            self._mock_qc_pass(mock_qc)
+            result = self.resume_job(auto_mode=True)
+
+        self.assertTrue(result.success)
+        self.assertEqual(result.final_state, 'READY_FOR_REVIEW')
+        mock_run.assert_not_called()
+        self.assertFalse(result.renderer_invoked)
+        self.assertEqual(result.checkpoint.attempt_counts['render_candidate'], 1)
+
+    def test_resume_from_aligned_reverifies_then_renders(self):
+        """O-01: ALIGNED resumes through fresh G3 before rendering."""
+        _spec, before, _args, _grant, _status, _ids = self._prepare_resume_job('ALIGNED')
+        self.assertEqual(before.current_state, 'ALIGNED')
+
+        with (
+            patch('subtitle.core.renderer_adapter.subprocess.run') as mock_run,
+            patch('subtitle.core.orchestrator.run_qc') as mock_qc,
+        ):
+            self._mock_render_fail_then_succeed(mock_run, fail_count=0)
+            self._mock_qc_pass(mock_qc)
+            result = self.resume_job(auto_mode=True)
+
+        self.assertTrue(result.success)
+        self.assertEqual(result.final_state, 'READY_FOR_REVIEW')
+        self.assertEqual(mock_run.call_count, 1)
+        job_dir = Path(result.spec.staging.job_work_dir).parent
+        _spec, _checkpoint, events = load_job_record(job_dir, job_id='job-1')
+        g3_event = next(event for event in events if event.next_state == 'RENDER_PERMITTED')
+        self.assertIn('resumed from ALIGNED rev 5 (evidence/resume_005.json)', g3_event.reason)
+
+    def test_resume_preserves_attempt_counts(self):
+        """O-01: resume uses the durable quota and cannot render attempt four."""
+        spec, checkpoint, _args, _grant, _status, _ids = self._prepare_resume_job()
+        job_dir = Path(spec.staging.job_work_dir).parent
+        seeded = replace(
+            checkpoint,
+            attempt_counts=MappingProxyType({'render_candidate': 2}),
+        )
+        save_checkpoint(job_dir / 'checkpoint.json', seeded)
+
+        with patch('subtitle.core.renderer_adapter.subprocess.run') as mock_run:
+            mock_run.return_value = Mock(returncode=1, stdout='', stderr='synthetic failure')
+            result = self.resume_job(auto_mode=True, sleep_fn=lambda _seconds: None)
+
+        self.assertFalse(result.success)
+        self.assertEqual(result.final_state, 'FAILED_JOB')
+        self.assertEqual(mock_run.call_count, 1)
+        reloaded = load_checkpoint(job_dir / 'checkpoint.json')
+        self.assertEqual(reloaded.attempt_counts['render_candidate'], 3)
+        self.assertEqual(reloaded.current_state, 'FAILED_JOB')
+
+    def test_resume_mid_render_crash_candidate_untrusted(self):
+        """O-01: an untrusted candidate is recorded, discarded, and rerendered."""
+        spec, checkpoint, _args, _grant, _status, _ids = self._prepare_resume_job('RENDERED')
+        job_dir = Path(spec.staging.job_work_dir).parent
+        candidate_path = Path(spec.staging.candidate_output_path)
+        candidate_path.write_bytes(b'untrusted interrupted render bytes')
+        mismatched_sha256 = hashlib.sha256(candidate_path.read_bytes()).hexdigest()
+
+        with (
+            patch('subtitle.core.renderer_adapter.subprocess.run') as mock_run,
+            patch('subtitle.core.orchestrator.run_qc') as mock_qc,
+        ):
+            self._mock_render_fail_then_succeed(mock_run, fail_count=0)
+            self._mock_qc_pass(mock_qc)
+            result = self.resume_job(auto_mode=True)
+
+        self.assertTrue(result.success)
+        self.assertEqual(result.final_state, 'READY_FOR_REVIEW')
+        self.assertEqual(mock_run.call_count, 1)
+        self.assertEqual(result.checkpoint.attempt_counts['render_candidate'], 2)
+        record = json.loads((job_dir / 'evidence' / 'resume_007.json').read_text())
+        self.assertTrue(record['candidate_discard']['discarded'])
+        self.assertEqual(record['candidate_discard']['candidate_sha256'], mismatched_sha256)
+        self.assertNotEqual(
+            record['candidate_discard']['candidate_sha256'],
+            record['candidate_discard']['expected_sha256'],
+        )
+        self.assertTrue(candidate_path.is_file())
+        self.assertNotEqual(hashlib.sha256(candidate_path.read_bytes()).hexdigest(), mismatched_sha256)
+
+    def test_resume_rejects_revoked_grant(self):
+        """O-01: a fresh revocation cancels a resumable job before rendering."""
+        spec, _checkpoint, _args, _grant, _status, _ids = self._prepare_resume_job()
+        job_dir = Path(spec.staging.job_work_dir).parent
+        before = load_checkpoint(job_dir / 'checkpoint.json')
+
+        with patch('subtitle.core.renderer_adapter.subprocess.run') as mock_run:
+            result = self.resume_job(status=self.make_status(status='revoked'))
+
+        self.assertEqual(result.deny_code, 'AUTH_REVOKED')
+        self.assertEqual(result.final_state, 'CANCELLED')
+        mock_run.assert_not_called()
+        after = load_checkpoint(job_dir / 'checkpoint.json')
+        self.assertEqual(after.attempt_counts, before.attempt_counts)
+
+    def test_resume_rejects_expired_grant(self):
+        """O-01: a fresh clock past expires_at blocks resume without rendering."""
+        spec, _checkpoint, _args, _grant, _status, _ids = self._prepare_resume_job()
+        job_dir = Path(spec.staging.job_work_dir).parent
+        before = load_checkpoint(job_dir / 'checkpoint.json')
+        future = NOW + timedelta(hours=2)
+
+        with patch('subtitle.core.renderer_adapter.subprocess.run') as mock_run:
+            result = self.resume_job(
+                now=future,
+                status=self.make_status(checked_at=ts(future)),
+            )
+
+        self.assertEqual(result.deny_code, 'AUTH_EXPIRED_OR_NOT_YET_VALID')
+        self.assertEqual(result.final_state, 'BLOCKED_AUTHORIZATION')
+        mock_run.assert_not_called()
+        after = load_checkpoint(job_dir / 'checkpoint.json')
+        self.assertEqual(after.attempt_counts, before.attempt_counts)
+
+    def test_resume_rejects_grant_bound_to_other_job(self):
+        """O-01: resume cannot rebind a grant from a different job."""
+        spec, _checkpoint, _args, _grant, _status, _ids = self._prepare_resume_job()
+        ledger_path = self.base_staging_dir / 'replay_ledger.json'
+        ledger = json.loads(ledger_path.read_text(encoding='utf-8'))
+        ledger['bindings']['grant-1']['job_id'] = 'job-other'
+        ledger_path.write_text(json.dumps(ledger), encoding='utf-8')
+        before = load_checkpoint(Path(spec.staging.job_work_dir).parent / 'checkpoint.json')
+
+        with patch('subtitle.core.renderer_adapter.subprocess.run') as mock_run:
+            result = self.resume_job()
+
+        self.assertEqual(result.deny_code, 'GRANT_REPLAY')
+        self.assertEqual(result.final_state, 'BLOCKED_AUTHORIZATION')
+        mock_run.assert_not_called()
+        after = load_checkpoint(Path(spec.staging.job_work_dir).parent / 'checkpoint.json')
+        self.assertEqual(after.attempt_counts, before.attempt_counts)
+
+    def test_resume_rejects_changed_script(self):
+        """O-01: a changed script digest conflicts with recorded gate evidence."""
+        spec, checkpoint, _args, _grant, _status, _ids = self._prepare_resume_job()
+        with patch('subtitle.core.renderer_adapter.subprocess.run') as mock_run:
+            result = self.resume_job(script_text=SCRIPT + ' changed')
+        self.assertEqual(result.deny_code, 'JOB_STATE_CONFLICT')
+        self.assertEqual(result.final_state, checkpoint.current_state)
+        mock_run.assert_not_called()
+        self.assertEqual(result.checkpoint.attempt_counts, checkpoint.attempt_counts)
+
+    def test_resume_rejects_changed_mfa(self):
+        """O-01: changed MFA bytes conflict with recorded provenance evidence."""
+        spec, checkpoint, _args, _grant, _status, _ids = self._prepare_resume_job()
+        with patch('subtitle.core.renderer_adapter.subprocess.run') as mock_run:
+            result = self.resume_job(
+                mfa_artifact_bytes=make_mfa_bytes(durations=[0.2, 0.3, 0.2, 0.3, 0.25]),
+            )
+        self.assertEqual(result.deny_code, 'JOB_STATE_CONFLICT')
+        self.assertEqual(result.final_state, checkpoint.current_state)
+        mock_run.assert_not_called()
+        self.assertEqual(result.checkpoint.attempt_counts, checkpoint.attempt_counts)
+
+    def test_resume_rejects_tampered_checkpoint(self):
+        """O-01: a broken checkpoint/event chain is AUDIT_CORRUPT."""
+        spec, checkpoint, _args, _grant, _status, _ids = self._prepare_resume_job()
+        job_dir = Path(spec.staging.job_work_dir).parent
+        save_checkpoint(
+            job_dir / 'checkpoint.json',
+            replace(checkpoint, state_revision=checkpoint.state_revision + 1),
+        )
+
+        with patch('subtitle.core.renderer_adapter.subprocess.run') as mock_run:
+            result = self.resume_job()
+
+        self.assertEqual(result.deny_code, 'AUDIT_CORRUPT')
+        mock_run.assert_not_called()
+
+    def test_resume_rejects_nonresumable_terminal_and_blocked_states(self):
+        """O-01: terminal and correction states reject resume without new renders."""
+        for state in ('FAILED_JOB', 'READY_FOR_REVIEW', 'BLOCKED_NEEDS_REVIEW'):
+            with self.subTest(state=state):
+                job_id = f'job-{state.lower()}'
+                grant_id = f'grant-{state.lower()}'
+                base = self.base_staging_dir / state.lower()
+                spec, checkpoint, _args, raw_grant, raw_status, _ids = self._prepare_resume_job(
+                    'RENDER_PERMITTED',
+                    job_id=job_id,
+                    grant_id=grant_id,
+                    base_staging_dir=base,
+                )
+                job_dir = Path(spec.staging.job_work_dir).parent
+                if state == 'FAILED_JOB':
+                    with patch('subtitle.core.renderer_adapter.subprocess.run') as mock_render:
+                        mock_render.return_value = Mock(
+                            returncode=1, stdout='', stderr='synthetic failure',
+                        )
+                        failed = _step_auto_mode_render(
+                            spec=spec,
+                            checkpoint=checkpoint,
+                            script_text=SCRIPT,
+                            mfa_artifact_bytes=make_mfa_bytes(),
+                            fonts_dir=self.fonts_dir,
+                            auto_mode=True,
+                            evidence_ids=(),
+                            now_iso=NOW_ISO,
+                            now=NOW,
+                            grant_bytes=raw_grant,
+                            status_bytes=raw_status,
+                            trusted_grant_keys={('owner', 'g1'): self.grant_key.public_key()},
+                            trusted_status_keys={('status', 's1'): self.status_key.public_key()},
+                            sleep_fn=lambda _seconds: None,
+                        )
+                    self.assertEqual(failed.final_state, 'FAILED_JOB')
+                elif state == 'READY_FOR_REVIEW':
+                    with (
+                        patch('subtitle.core.renderer_adapter.subprocess.run') as mock_render,
+                        patch('subtitle.core.orchestrator.run_qc') as mock_qc,
+                    ):
+                        self._mock_render_fail_then_succeed(mock_render, fail_count=0)
+                        self._mock_qc_pass(mock_qc)
+                        ready = self.resume_job(
+                            job_id=job_id, grant_id=grant_id,
+                            base_staging_dir=base, auto_mode=True,
+                        )
+                    self.assertTrue(ready.success)
+                else:
+                    blocked, transition = _advance(
+                        checkpoint,
+                        target_state='BLOCKED_NEEDS_REVIEW',
+                        event_id=f'evt_seed_block_{job_id}',
+                        evidence_refs=('deny:SYNTHETIC_BLOCK',),
+                        actor='test',
+                        decision='DENIED',
+                        now=NOW_ISO,
+                        reason='synthetic blocked checkpoint',
+                        job_dir=job_dir,
+                    )
+                    self.assertIsNotNone(blocked)
+                    self.assertTrue(transition.accepted)
+
+                before = load_checkpoint(job_dir / 'checkpoint.json')
+                with patch('subtitle.core.renderer_adapter.subprocess.run') as mock_render:
+                    result = self.resume_job(
+                        job_id=job_id,
+                        grant_id=grant_id,
+                        base_staging_dir=base,
+                    )
+                self.assertEqual(result.deny_code, 'RESUME_NOT_PERMITTED')
+                self.assertEqual(result.final_state, state)
+                mock_render.assert_not_called()
+                after = load_checkpoint(job_dir / 'checkpoint.json')
+                self.assertEqual(after.attempt_counts, before.attempt_counts)
+
+    def test_resume_rejects_qc_evaluated_in_v1(self):
+        """O-01: QC_EVALUATED is outside the v1 resume dispatch table."""
+        spec, checkpoint, _args, _grant, _status, _ids = self._prepare_resume_job('RENDERED')
+        job_dir = Path(spec.staging.job_work_dir).parent
+        evaluated, transition = _advance(
+            checkpoint,
+            target_state='QC_EVALUATED',
+            event_id='evt_seed_qc_evaluated_job-1',
+            evidence_refs=('qc:ev_qc_job-1', 'retry:render_candidate:attempts=1'),
+            actor='test',
+            decision='QC_EVALUATED',
+            now=NOW_ISO,
+            reason='synthetic QC checkpoint',
+            job_dir=job_dir,
+        )
+        self.assertIsNotNone(evaluated)
+        self.assertTrue(transition.accepted)
+        with patch('subtitle.core.renderer_adapter.subprocess.run') as mock_run:
+            result = self.resume_job()
+        self.assertEqual(result.deny_code, 'RESUME_NOT_PERMITTED')
+        self.assertEqual(result.final_state, 'QC_EVALUATED')
+        mock_run.assert_not_called()
+        self.assertEqual(result.checkpoint.attempt_counts, checkpoint.attempt_counts)
+
+    def test_resume_writes_audit_trail(self):
+        """O-01: resume record precedes the next transition and is cited by it."""
+        _spec, before, _args, _grant, _status, _ids = self._prepare_resume_job()
+        with (
+            patch('subtitle.core.renderer_adapter.subprocess.run') as mock_run,
+            patch('subtitle.core.orchestrator.run_qc') as mock_qc,
+        ):
+            self._mock_render_fail_then_succeed(mock_run, fail_count=0)
+            self._mock_qc_pass(mock_qc)
+            result = self.resume_job(auto_mode=True)
+
+        job_dir = Path(result.spec.staging.job_work_dir).parent
+        resume_path = job_dir / 'evidence' / 'resume_006.json'
+        record = json.loads(resume_path.read_text(encoding='utf-8'))
+        self.assertEqual(
+            set(record),
+            {
+                'schema_version', 'event_id', 'job_id', 'grant_id', 'prior_state',
+                'prior_state_revision', 'resumed_at', 'actor', 'reason',
+                'fresh_verify_refs', 'status_view', 'attempt_counts', 'input_checks',
+                'dispatch_step', 'candidate_discard',
+            },
+        )
+        self.assertEqual(record['attempt_counts'], dict(before.attempt_counts))
+        self.assertTrue(record['fresh_verify_refs'][0]['allowed'])
+        self.assertEqual(record['status_view']['checked_at'], NOW_ISO)
+        _spec, _checkpoint, events = load_job_record(job_dir, job_id='job-1')
+        same_state_events = [
+            event for event in events
+            if event.prior_state == event.next_state and event.event_id != 'evt-intake-1'
+        ]
+        self.assertEqual(same_state_events, [])
+        render_event = next(event for event in events if event.next_state == 'RENDERED')
+        self.assertIn('evidence/resume_006.json', render_event.reason)
+        self.assertTrue(resume_path.is_file())
+
+    def test_resume_from_rendered_with_quota_exhausted_qc_fault(self):
+        """O-01: a QC fault at exhausted quota fails without render attempt four."""
+        spec, checkpoint, _args, _grant, _status, _ids = self._prepare_resume_job('RENDERED')
+        job_dir = Path(spec.staging.job_work_dir).parent
+        exhausted = replace(
+            checkpoint,
+            attempt_counts=MappingProxyType({'render_candidate': 3}),
+        )
+        save_checkpoint(job_dir / 'checkpoint.json', exhausted)
+        qc_fault = QCResult(
+            status='BLOCKED',
+            report=None,
+            evidence_record=None,
+            evidence_id='ev_qc_job-1',
+            target_state='FAILED_JOB',
+            reason='synthetic system fault',
+            unsatisfied_checks=('probe_failed',),
+        )
+
+        with (
+            patch('subtitle.core.renderer_adapter.subprocess.run') as mock_run,
+            patch('subtitle.core.orchestrator.run_qc', return_value=qc_fault),
+        ):
+            result = self.resume_job(auto_mode=True)
+
+        self.assertFalse(result.success)
+        self.assertEqual(result.final_state, 'FAILED_JOB')
+        mock_run.assert_not_called()
+        after = load_checkpoint(job_dir / 'checkpoint.json')
+        self.assertEqual(after.attempt_counts['render_candidate'], 3)
 
 
 if __name__ == '__main__':

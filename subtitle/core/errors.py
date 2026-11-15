@@ -24,6 +24,7 @@ from typing import Literal
 
 FailureClassification = Literal["RETRYABLE", "NON_RETRYABLE"]
 AttemptResult = Literal["SUCCESS", "FAILED", "EXHAUSTED"]
+RESUME_NOT_PERMITTED = "RESUME_NOT_PERMITTED"
 
 
 # ---------------------------------------------------------------------------
@@ -100,6 +101,7 @@ _FAILURE_TAXONOMY: dict[str, tuple[str, str | None]] = {
     "TERMINAL_STATE_LOCKED": ("NON_RETRYABLE", None),
     "REVOKED_OR_CANCELLED_JOB": ("NON_RETRYABLE", None),
     "IDEMPOTENT_NOOP": ("NON_RETRYABLE", None),
+    RESUME_NOT_PERMITTED: ("NON_RETRYABLE", None),
     # NON_RETRYABLE -> RENDER_PERMITTED (1)
     "AUTO_MODE_DISABLED": ("NON_RETRYABLE", "RENDER_PERMITTED"),
     # NON_RETRYABLE -> READY_FOR_REVIEW (1)
