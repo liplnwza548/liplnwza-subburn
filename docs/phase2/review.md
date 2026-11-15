@@ -344,14 +344,15 @@ NR-01/02/03/08/09/10/11 เขียนแค่ "ตั๋วหลัง Phase
   ต้องตรวจซ้ำบนโค้ดที่แก้แล้วแยกต่างหาก และข้อ (2) ยังไม่ได้ทำ
 - **เจ้าของ:** ฟิลิป (สั่งแยกหลัง Phase 2) — **กำหนด:** ตั๋วหลัง Phase 2 ยังไม่กำหนดวัน
 
-### D-01 — `ColabAdapter.deliver_review()` ไม่ตรวจ symlink: เขียนไฟล์ออกนอก root ได้ (แกน 2 อิสระเจอ)
+### D-01 — symlink ใน delivery path อาจเขียนไฟล์ออกนอก root ได้ (P0; แก้ใน branch นี้ รอ merge)
 
-- **คืออะไร:** `ColabAdapter.deliver_review()` (`subtitle/adapters/colab.py:198-220`)
+- **ช่องโหว่ก่อน branch นี้:** `ColabAdapter.deliver_review()`
+  (`subtitle/adapters/colab.py:198-220`)
   สร้าง `parent_dir = fake_drive_root / fake_drive_parent_id` แล้วเรียก
   `mkdir(parents=True, exist_ok=True)` ต่อด้วย `out_path.write_bytes(data)`
   **โดยไม่ตรวจ symlink เลย** — ถ้า `parent_id` เป็น symlink ชี้ไป directory
   อื่น ไฟล์จะถูกเขียนตาม symlink ออกนอก root ที่อนุมัติ
-- **หลักฐานที่บีนตรวจซ้ำเอง:** อ่าน `colab.py:198-220` แล้วทุกบรรทัด —
+- **หลักฐานเดิมที่บีนตรวจซ้ำเอง:** อ่าน `colab.py:198-220` แล้วทุกบรรทัด —
   มีการเช็ก destination (provider/id/owner_id) กับการเช็กว่า artifact
   เป็นไฟล์ก่อนเขียน แต่**ไม่มี `is_symlink` / `safe_resolve_path` /
   การเทียบ path ว่าอยู่ใน root** ที่จุด delivery เลย;
@@ -368,16 +369,24 @@ NR-01/02/03/08/09/10/11 เขียนแค่ "ตั๋วหลัง Phase
 - **ทำไมไม่ลดเป็น P1:** P1 คือ "การป้องกันหายแต่ยังไม่พิสูจน์ว่ามีทาง
   ไม่ปลอดภัย" — ข้อนี้พิสูจน์ทางเขียนออกนอก root ได้จากโค้ดจริงแล้ว
   (`mkdir` + `write_bytes` ตาม symlink ได้เลย ไม่ต้องมีเงื่อนไขพิเศษ)
-- **Mitigation (เป็นลายลักษณ์อักษร):** ปฏิเสธ symlink ที่ parent path
-  ก่อน `mkdir`/เขียน (ตรวจทุก component ของ path หรือ resolve แล้วเทียบว่า
-  ผลอยู่ใน root) + เทสต์ใหม่ที่ตั้ง `parent_id` เองเป็น symlink แล้วเรียก
-  `deliver_review()` จริง ยืนยันว่าไม่มีไฟล์ปรากฏนอก root พร้อม positive
-  control ที่ parent ปกติส่งได้ — และตรวจอะแดปเตอร์ local
-  (`subtitle/adapters/local.py:134` `deliver_review`) ด้วยว่ามีช่อง
-  เดียวกันหรือไม่ — ฟิลิปสั่งเปิดงานแก้ D-01 + C-18 แล้ว 2026-11-15
-  (ร่างแผนก่อน — ดู `D01-C18_fix_plan_DRAFT.md` ใน Job Pack)
-- **เจ้าของ:** ฟิลิป (สั่งเปิดงานแก้แล้ว 2026-11-15) — **กำหนด:** รอแผนแก้
-  ที่ฟิลิปอนุมัติก่อนเขียนโค้ด
+- **การแก้ใน branch `phase2/d01-c18-fix`:** ทั้ง Colab และ Local
+  เรียก `_reject_symlink_components` ก่อนสร้าง delivery directory; ตรวจ
+  symlink ที่ `OFFLINE-...` โดยตรงด้วย; และปฏิเสธปลายทางปกติที่มีอยู่แล้ว
+  ด้วย `ADAPTER_OUTPUT_EXISTS` เพื่อไม่เขียนทับ ไฟล์ `intake.py` ไม่ได้แก้
+- **หลักฐานที่เพิ่ม:** `test_drive_delivery_parent_symlink_rejected`,
+  `test_local_delivery_job_symlink_rejected`,
+  `test_local_delivery_root_symlink_rejected`,
+  `test_delivery_output_symlink_rejected`, และ
+  `test_delivery_existing_output_rejected` — แต่ละกรณีมี positive control
+  ที่ส่งผ่าน path ปกติได้ เทสต์เดิม `test_drive_parent_symlink_rejected`
+  ซึ่งพิสูจน์ทางอ่านไฟล์ยังคงเดิม
+- **ขอบเขตที่ยังเหลือ:** การตรวจเกิดก่อนเขียน จึงยังมี TOCTOU หากมีผู้วาง
+  symlink ระหว่างตรวจกับเขียน และป้องกันเฉพาะทาง delivery ของ adapter
+  ไม่ได้จำกัด agent ที่เขียนไฟล์ตรงจาก shell (L2/E-02)
+- **ผลทดสอบบน branch:** Phase 2: `Ran 206 tests in 17.432s`; `OK`.
+  Foundation: `Ran 6 tests in 0.264s`; `OK`. รันครบทั้งสองคำสั่ง
+- **สถานะ:** การปิด D-01 และ G3 มีผลเมื่อ PR นี้ merge เท่านั้น
+- **เจ้าของ:** ฟิลิป — **กำหนด:** รออนุมัติ merge แยกหลังตรวจ diff และหลักฐาน
 
 ### P1-1 — E-02: Direct CLI bypass ได้ (known limitation)
 
@@ -476,20 +485,25 @@ NR-01/02/03/08/09/10/11 เขียนแค่ "ตั๋วหลัง Phase
 - **ทำไมถึงเป็น P1 ไม่ใช่ P0:** Codex จัดข้อนี้เป็น P0 (PART_1b/4) —
   บีนตรวจซ้ำแล้ว**ลดเป็น P1** ด้วยเหตุผล 3 ข้อ: (1) นี่คือดีไซน์ที่
   ฟิลิปอนุมัติไว้แล้วใน P2-009 D8 ไม่ใช่ช่องที่แอบเกิดโดยไม่มีใครรู้;
-  (2) หน้าต่างเสี่ยงแคบ — retry เพิ่มสูงสุด 2 ครั้ง backoff รวม ≤8 วิ
-  grant ต้องหมดอายุพอดีในช่วงนั้นจึงจะเกิด; (3) revocation ยังตรวจสด
-  ทุก retry — ไม่ใช่ "ไม่มีการตรวจเลย" — แต่ยังเป็น P1 เพราะ expiry check
-  ที่ไม่สดคือการป้องกันที่ทำงานผิดตาม Spec §5
+  (2) ต้องมี grant ที่เหลืออายุน้อยและ render ที่ล้มก่อน retry จึงเห็น
+  พฤติกรรมนี้; run อาจมี render 3 ครั้ง ครั้งละ timeout 600 วินาทีรวมกับ
+  backoff และ QC จึงมีขอบเขตเวลาประมาณ 35 นาที; (3) ทุก retry ตรวจด้วย
+  grant และ revocation view ชุดเดิม จึงไม่ใช่การตรวจข้อมูลสด — แต่ยังเป็น
+  P1 เพราะ expiry check ที่ไม่สดไม่ตรงกับ Spec §5
 - **ทำไมไม่ลดเป็น P2:** เกี่ยวกับความปลอดภัยของ grant โดยตรง
   (grant หมดอายุแล้วยัง render ได้) ไม่ใช่แค่เรื่องเอกสาร/ความครบของเทสต์
-- **Mitigation (เป็นลายลักษณ์อักษร):** **ฟิลิปต้องตัดสินก่อน** — ทางเลือก
-  (ก) คง D8 ไว้ + บันทึกขอบเขตกับหน้าต่างเสี่ยงเป็นลายลักษณ์อักษร
-  หรือ (ข) เปลี่ยนเป็น fresh `now` ทุก retry (ต้องแก้เทสต์ C-18
-  และออกแบบใหม่ว่าใครเป็นผู้ให้ `now` โดยไม่ละเมิดกฎ "ห้ามอ่านนาฬิกาจริง
-  ในโมดูล") — ห้ามเลือกแทนฟิลิป — ฟิลิปสั่งเปิดงานแก้ D-01 + C-18 แล้ว
-  2026-11-15 (ร่างแผนก่อน — ดู `D01-C18_fix_plan_DRAFT.md` ใน Job Pack)
-- **เจ้าของ:** ฟิลิป (สั่งเปิดงานแก้แล้ว 2026-11-15) — **กำหนด:** รอแผนแก้
-  ที่ฟิลิปอนุมัติก่อนเขียนโค้ด
+- **Mitigation ที่ฟิลิปอนุมัติ (C-18 option (a)):** คงค่า `now` เดิมตาม
+  P2-009 D8 และบันทึกขอบเขตเป็น known limitation; ไม่แก้
+  `subtitle/core/orchestrator.py` และไม่ถือว่า C-18 ปิด
+- **Fixture ที่เพิ่ม:** `test_expiry_between_attempts_retry_uses_run_start_now`
+  ตั้งให้ grant หมดอายุหลัง render attempt แรกที่ล้มและก่อน retry แล้ว
+  ยืนยันว่า retry ยังผ่านเพราะใช้ run-start `now` เดิม — เทสต์นี้บันทึก
+  พฤติกรรมที่ยอมรับไว้ ไม่ได้ยืนยันว่า expiry ตรวจสดทุก retry
+- **Caller guidance:** ให้ออก grant ที่เหลืออายุเผื่อเวลารันสูงสุด
+  ประมาณ 35 นาทีสำหรับงานที่อาจใช้ครบ 3 render attempts; นี่เป็นคำแนะนำ
+  ไม่ใช่ gate ที่บังคับในโค้ด
+- **สถานะ:** C-18 ยังเป็น P1 และไม่ปิด; option (a) ยอมรับข้อจำกัดพร้อม
+  mitigation เป็นลายลักษณ์อักษรตามคำตัดสินของฟิลิป 2026-11-15
 
 ## 10. Observations (P2 ทุกข้อ)
 
@@ -709,12 +723,11 @@ Job Pack (`P2-010_AXIS2_Codex_review_PART_*.md` + บันทึกการต
 
 ### G3/G4/G5 — ปิดแล้วด้วยเทสต์ใหม่ใน P2-010 (ยกเว้น G3 ที่เปิดใหม่ — ดูข้างล่าง)
 
-- **G3 (fake Drive parent เป็น symlink):** **ยังไม่ปิด — เปิดใหม่ตอนลงลายเซ็น
-  แกน 2 อิสระ 2026-11-15** — เทสต์ D-01 เดิม
-  (`test_drive_parent_symlink_rejected`) พิสูจน์แค่ `resolve_source()`
-  ปฏิเสธ symlink ที่ root ไม่ได้พิสูจน์ `deliver_review()` —
-  แถว D-01 ใน threat-matrix แก้เป็น FAIL แล้ว (ดูหัวข้อ 3/9) —
-  จะปิดได้เมื่อมีเทสต์ delivery ใหม่ตามแผนแก้ D-01
+- **G3 (symlink ใน fake Drive delivery path):** เทสต์ delivery ใหม่และ
+  positive controls ถูกเพิ่มใน branch `phase2/d01-c18-fix`; เทสต์เดิม
+  `test_drive_parent_symlink_rejected` ยังอยู่เหมือนเดิมและยังพิสูจน์เฉพาะ
+  `resolve_source()` การปิด G3 มีผลเมื่อ PR นี้ merge เท่านั้น หลังจาก
+  ชุดทดสอบเต็มผ่านบน branch
 - **G4 (owner_id ผิดตัวเดียว):** ปิดแล้ว — เทสต์ D-02
   (`test_owner_id_off_by_one_rejected`) พิสูจน์ว่าปฏิเสธก่อนเขียนแม้แต่ 1 ไบต์
 - **G5 (หมดโควต้า retry ข้าม restart):** ปิดในส่วนความปลอดภัยแล้ว — เทสต์ C-16

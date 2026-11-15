@@ -213,9 +213,29 @@ class ColabAdapter:
                 "ADAPTER_ROOT_MISSING",
                 f"artifact is not a readable file: {artifact_path.name}",
             )
+        from subtitle.core.intake import _Deny, _reject_symlink_components
+
         parent_dir = self._fake_drive_root / self._fake_drive_parent_id
-        parent_dir.mkdir(parents=True, exist_ok=True)
         out_path = parent_dir / f"OFFLINE-{artifact_path.name}"
+        try:
+            _reject_symlink_components(parent_dir, "ADAPTER_SYMLINK_REJECTED")
+        except _Deny as exc:
+            raise AdapterError(
+                "ADAPTER_SYMLINK_REJECTED",
+                "simulated Drive delivery path contains a symlink; "
+                "nothing was written",
+            ) from exc
+        if out_path.is_symlink():
+            raise AdapterError(
+                "ADAPTER_SYMLINK_REJECTED",
+                "simulated Drive output is a symlink; nothing was written",
+            )
+        if out_path.exists():
+            raise AdapterError(
+                "ADAPTER_OUTPUT_EXISTS",
+                f"simulated Drive output already exists: {out_path.name}",
+            )
+        parent_dir.mkdir(parents=True, exist_ok=True)
         data = artifact_path.read_bytes()
         out_path.write_bytes(data)
         digest = hashlib.sha256(data).hexdigest()
